@@ -25,6 +25,15 @@ function buildSetupUrl(token, type) {
 // -------------------- Public: view + accept invite --------------------
 
 inviteRouter.get('/invite/:token', (req, res) => {
+  // Never let the browser cache this response. Without these headers a
+  // failed lookup (410 during a server restart / DATA_DIR mismatch /
+  // fresh-boot race) gets cached by Chrome and shows "link isn't valid"
+  // forever, even after the token is back in the store. Applies to the
+  // success path too — the token expires 7 days later and the response
+  // shouldn't be reused past its window.
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+
   const rec = findToken(req.params.token);
   if (!rec) return res.status(410).json({ ok: false, error: 'This link has expired or was already used.' });
   const user = getUserById(rec.userId);
