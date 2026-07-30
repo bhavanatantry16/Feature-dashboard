@@ -4,25 +4,90 @@ import cors from 'cors';
 import compression from 'compression';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config } from './config.js';
+import { config, persistSettings } from './config.js';
 import { apiRouter } from './routes/api.js';
+import { authRouter, adminRouter } from './routes/auth.js';
+import { sessionMiddleware, initPassport, requireAuth, requireRole } from './services/authService.js';
+import { ensureBootstrapAdmin } from './services/userStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
-if (config.corsOrigins.length) app.use(cors({ origin: config.corsOrigins }));
+if (config.corsOrigins.length) app.use(cors({ origin: config.corsOrigins, credentials: true }));
 app.use(compression());
 
-app.use('/api', apiRouter);
+// Sessions + passport BEFORE any route so req.user is populated everywhere.
+// Also persist the auto-generated session secret so restarts don't nuke
+// existing sessions.
+app.use(sessionMiddleware());
+initPassport(app);
+if (!config.sessionSecret) {
+  // sessionMiddleware() already generated one and stashed it on config —
+  // persist it so it survives restarts.
+  persistSettings({ sessionSecret: config.sessionSecret });
+}
+
+// Auth routes are public (login / OAuth). Admin routes are gated inside
+// the router itself (requireRole('Admin')).
+app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
+
+// Everything else under /api requires a signed-in user. A handful of
+// endpoints stay public because the login page uses them or they're
+// truly no-secret:
+//   /api/auth/*   — handled above (public)
+//   /api/healthz  — not under /api
+// The webhook receiver has its own signature check — bypass session auth
+// because GitHub can't carry cookies.
+const PUBLIC_API = new Set([
+  '/webhooks/github',      // signature-verified separately
+]);
+app.use('/api', (req, res, next) => {
+  if (PUBLIC_API.has(req.path)) return next();
+  return requireAuth(req, res, next);
+}, apiRouter);
 
 const publicDir = path.join(__dirname, '..', 'public');
+
+// Static files — /admin/login.html and /admin/index.html need to load
+// before auth kicks in (obviously). We serve /admin/*.html and /admin/*.js
+// and /admin/*.css publicly; the actual data endpoints under /api/admin
+// are gated by requireRole('Admin').
+app.use('/admin', express.static(path.join(publicDir, 'admin')));
+
+// Gate the main dashboard behind auth too — otherwise anyone hitting /
+// sees the app before logging in. Unauth requests bounce to the login
+// page. Direct file requests for /config.html etc. also bounce.
+app.use((req, res, next) => {
+  // Allow anonymous access to static assets and to the auth surface.
+  const p = req.path;
+  if (p.startsWith('/admin/'))                return next();
+  if (p.startsWith('/api/'))                  return next(); // handled by their own auth
+  if (/\.(css|js|svg|png|jpg|jpeg|ico|woff2?|map)$/.test(p)) return next();
+  if (p === '/healthz')                       return next();
+  if (!req.user)                              return res.redirect('/admin/login.html');
+  next();
+});
+
 app.use(express.static(publicDir, { extensions: ['html'] }));
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
 app.listen(config.port, () => {
   console.log(`GitHub Engineering Intelligence listening on http://localhost:${config.port}`);
-  if (!config.token) console.log('  → No GitHub token configured yet. Open /config.html or run in demo mode: /?demo=1');
+  if (!config.token) console.log('  → No GitHub token configured yet. Open /config.html after signing in, or run in demo mode: /?demo=1');
+  // Bootstrap Super Admin — printed to console on first boot only.
+  const boot = ensureBootstrapAdmin();
+  if (boot) {
+    console.log('');
+    console.log('  ┌────────────────────────────────────────────────────────────');
+    console.log('  │  BOOTSTRAP SUPER ADMIN — this is the ONE time these are shown');
+    console.log(`  │    Email:    ${boot.email}`);
+    console.log(`  │    Password: ${boot.password}`);
+    console.log('  │  Sign in at /admin/login.html and rotate this password now.');
+    console.log('  └────────────────────────────────────────────────────────────');
+    console.log('');
+  }
 });

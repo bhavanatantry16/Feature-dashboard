@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in · Feature Tracker</title>
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script>
+    // Same dark-mode bootstrap as the main app so the login page respects
+    // the user's saved preference without a flash of the wrong theme.
+    (function () {
+      const s = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (s === 'dark' || (!s && prefersDark)) document.documentElement.classList.add('dark');
+    })();
+  </script>
+</head>
+<body class="min-h-full font-sans antialiased text-ink-900 dark:text-slate-100" style="background: var(--bg);">
+
+  <main class="login-shell">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-mark">▨</div>
+        <div>
+          <div style="font-weight:700;font-size:18px;letter-spacing:-0.01em">Feature Tracker</div>
+          <div style="font-size:12px;color:var(--ink-500)">Engineering Command Center</div>
+        </div>
+      </div>
+
+      <h1 class="login-title">Sign in</h1>
+      <p class="login-sub">Use your work email, or sign in with GitHub if your account is linked.</p>
+
+      <div id="login-error" class="login-error hidden"></div>
+      <div id="login-success" class="login-success hidden"></div>
+
+      <form id="login-form" class="login-form" autocomplete="on">
+        <label>Email
+          <input type="email" id="login-email" required autocomplete="username" placeholder="you@company.com" />
+        </label>
+        <label>Password
+          <input type="password" id="login-password" required autocomplete="current-password" placeholder="••••••••" />
+        </label>
+        <div class="login-row">
+          <label class="login-check">
+            <input type="checkbox" id="login-remember" checked /> Remember me
+          </label>
+          <a href="#" class="login-forgot" id="login-forgot">Forgot password?</a>
+        </div>
+        <button type="submit" class="btn-primary login-submit">Sign in</button>
+      </form>
+
+      <div id="oauth-block" class="login-oauth hidden">
+        <div class="login-divider"><span>or</span></div>
+        <a href="/api/auth/github" class="btn-secondary login-github">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-3px;margin-right:8px">
+            <path d="M12 .5C5.6.5.5 5.6.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2.1c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.4-1.3-5.4-5.8 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.6 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.4 5.9.4.3.8 1 .8 2v3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.6 18.4.5 12 .5z"/>
+          </svg>
+          Sign in with GitHub
+        </a>
+      </div>
+
+      <div class="login-oauth-hint" id="oauth-hint">
+        <span class="text-ink-500">GitHub sign-in isn't configured yet. A Super Admin can enable it in Settings.</span>
+      </div>
+    </div>
+
+    <div class="login-foot">
+      <a href="https://github.com/bhavanatantry16/Feature-dashboard" target="_blank" rel="noopener">github.com/bhavanatantry16/Feature-dashboard</a>
+    </div>
+  </main>
+
+  <script type="module">
+    // Show a friendly error when OAuth redirects here with ?error=
+    const params = new URLSearchParams(location.search);
+    if (params.get('error') === 'oauth') {
+      const e = document.getElementById('login-error');
+      e.textContent = 'GitHub sign-in failed. Check that your GitHub account is linked, or ask an admin.';
+      e.classList.remove('hidden');
+    }
+
+    // Show/hide the OAuth button based on whether an admin has configured
+    // GitHub OAuth. /api/auth/me is public and returns githubOAuthEnabled.
+    fetch('/api/auth/me').then(r => r.json()).then(({ authenticated, githubOAuthEnabled, user }) => {
+      if (authenticated) { location.href = '/'; return; }
+      document.getElementById('oauth-block').classList.toggle('hidden', !githubOAuthEnabled);
+      document.getElementById('oauth-hint').classList.toggle('hidden', githubOAuthEnabled);
+    }).catch(() => {});
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errEl = document.getElementById('login-error');
+      const okEl = document.getElementById('login-success');
+      errEl.classList.add('hidden'); okEl.classList.add('hidden');
+      try {
+        const r = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          credentials: 'same-origin',
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'Login failed');
+        okEl.textContent = 'Signed in — redirecting…';
+        okEl.classList.remove('hidden');
+        // If the account must change its password, land on the admin
+        // dashboard which prompts (or a dedicated change-password page in
+        // future). For now, admin/index.html handles the prompt.
+        location.href = data.user.mustChangePassword ? '/admin/index.html#change-password' : '/';
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('login-forgot').addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('Forgot-password flow needs SMTP to be configured. In the meantime, ask a Super Admin to reset your password from the Admin dashboard.');
+    });
+  </script>
+</body>
+</html>

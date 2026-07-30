@@ -29,6 +29,17 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function boot() {
+  // Auth first — if we're not signed in, the server bounces us to the
+  // login page. Loading the snapshot before we know who we are wastes a
+  // round-trip and (once we scope repositories to per-user permissions)
+  // would show the wrong data. Handled by /api/auth/me.
+  try {
+    const meResp = await fetch('/api/auth/me').then(r => r.json());
+    if (!meResp.authenticated) { location.href = '/admin/login.html'; return; }
+    renderSignedInHeader(meResp.user);
+  } catch {
+    // API unreachable — degrade gracefully, no login redirect loop.
+  }
   try {
     const cfg = await api.config();
     state.refreshSeconds = cfg.clientRefreshSeconds || 60;
@@ -39,6 +50,26 @@ async function boot() {
   state.refreshTimer = setInterval(() => refreshSnapshot(false), state.refreshSeconds * 1000);
   api.subscribeEvents(() => refreshSnapshot(false));
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && refreshSnapshot(false));
+}
+
+function renderSignedInHeader(user) {
+  const me = document.getElementById('header-me');
+  const nameEl = document.getElementById('header-me-name');
+  const roleEl = document.getElementById('header-me-role');
+  const signout = document.getElementById('btn-signout');
+  const adminLink = document.getElementById('header-admin-link');
+  if (!me || !user) return;
+  nameEl.textContent = user.name || user.email || 'Signed in';
+  roleEl.textContent = user.role || 'Viewer';
+  me.classList.remove('hidden');
+  signout?.classList.remove('hidden');
+  // Admin shortcut only shows for Admin / Super Admin. Everyone else
+  // doesn't need it and shouldn't see a link that 403s.
+  if (['Admin', 'Super Admin'].includes(user.role)) adminLink?.classList.remove('hidden');
+  signout?.addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    location.href = '/admin/login.html';
+  });
 }
 
 // ---------- Tabs ----------
