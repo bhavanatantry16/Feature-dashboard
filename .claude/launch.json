@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "engineering-intelligence",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/user/github-engineering-intelligence", "run", "dev"],
+      "port": 8788
+    }
+  ]
+}

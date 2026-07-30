@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Feature Tracker · Engineering Command Center</title>
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {
+      fontFamily: { sans: ['Inter','ui-sans-serif','system-ui'] },
+    } } }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>
+    (function () {
+      const s = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (s === 'dark' || (!s && prefersDark)) document.documentElement.classList.add('dark');
+    })();
+  </script>
+</head>
+<body class="min-h-full font-sans antialiased text-ink-900 dark:text-slate-100">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="mx-auto max-w-[1500px] px-6 py-4 flex flex-wrap items-center gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="brand-mark">▨</div>
+        <div class="leading-tight">
+          <div class="text-lg font-semibold tracking-tight">Feature Tracker</div>
+          <div class="text-[12px] text-ink-500" id="scope-label">—</div>
+        </div>
+      </div>
+
+      <nav id="tabs" class="tabs ml-4" role="tablist">
+        <button class="tab active" data-tab="overview"><i data-lucide="gauge" class="w-4 h-4"></i>Overview</button>
+        <button class="tab"        data-tab="board"><i data-lucide="layout-grid" class="w-4 h-4"></i>Board</button>
+        <button class="tab"        data-tab="roadmap"><i data-lucide="map" class="w-4 h-4"></i>Roadmap</button>
+      </nav>
+
+      <div class="ml-auto flex items-center gap-2">
+        <button id="btn-download-pdf" class="btn-secondary text-xs" title="Download the current Overview as PDF (uses your browser's Save as PDF)">
+          <i data-lucide="file-down" class="w-3.5 h-3.5"></i>Download PDF
+        </button>
+        <button id="btn-playback" class="btn-primary text-xs" title="30-second executive recap">
+          <i data-lucide="play" class="w-3.5 h-3.5"></i>Executive Playback
+        </button>
+        <span id="last-synced-wrap" class="text-[11px] text-ink-500 hidden md:inline">Updated <span id="last-synced">—</span></span>
+        <button id="btn-refresh" class="icon-btn" title="Refresh"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+        <button id="btn-theme"   class="icon-btn" title="Theme"><i data-lucide="moon" class="w-4 h-4"></i></button>
+        <a href="/config.html" class="icon-btn" title="Settings"><i data-lucide="settings" class="w-4 h-4"></i></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Demo banner -->
+  <div id="demo-banner" class="hidden mx-auto max-w-[1500px] px-6 mt-4">
+    <div class="sticky-info flex items-center gap-3">
+      <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+      <span class="font-medium text-sm">Demo data</span>
+      <span class="text-sm text-ink-500">Connect GitHub to sync your own features automatically.</span>
+      <a href="/config.html" class="ml-auto btn-primary text-xs">Connect GitHub</a>
+    </div>
+  </div>
+
+  <main class="mx-auto max-w-[1500px] px-6 py-6">
+
+    <!-- =========================== OVERVIEW =========================== -->
+    <section id="tab-overview" class="tab-panel space-y-6">
+      <div>
+        <h2 class="text-xl font-semibold tracking-tight">Today at a glance</h2>
+        <p class="text-sm text-ink-500">Everything you need to know without opening a repo.</p>
+      </div>
+
+      <!-- Today's Progress -->
+      <div id="today-progress" class="progress-grid"></div>
+
+      <!-- Needs Attention + Weekly Summary -->
+      <div class="grid grid-cols-1 xl:grid-cols-[1.15fr_1fr] gap-6">
+        <div>
+          <div class="section-head">
+            <h3>Needs Attention</h3>
+            <span class="section-sub">What to look at first</span>
+          </div>
+          <div id="needs-attention" class="space-y-2"></div>
+        </div>
+        <div>
+          <div class="section-head">
+            <h3>Weekly Summary</h3>
+            <span class="section-sub">Auto-generated for stakeholders</span>
+          </div>
+          <div id="weekly-summary" class="summary-card"></div>
+        </div>
+      </div>
+
+      <!-- Recently released / Upcoming -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div>
+          <div class="section-head"><h3>Recently Released</h3><span class="section-sub">Shipped to Production</span></div>
+          <div id="recent-releases" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+        <div>
+          <div class="section-head"><h3>Upcoming Releases</h3><span class="section-sub">Nearing production</span></div>
+          <div id="upcoming-releases" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+      </div>
+
+      <!-- Activity + Notifications -->
+      <div class="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
+        <div>
+          <div class="section-head"><h3>What happened today</h3><span class="section-sub">Latest changes</span></div>
+          <div id="activity" class="activity-card"></div>
+        </div>
+        <div>
+          <div class="section-head"><h3>Notifications</h3><span id="notif-count" class="section-sub">—</span></div>
+          <div id="notifications" class="space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================== BOARD =========================== -->
+    <section id="tab-board" class="tab-panel hidden space-y-4">
+      <div class="flex items-baseline justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="text-xl font-semibold tracking-tight">Feature Board</h2>
+          <p class="text-sm text-ink-500">What's planned, in progress, testing and live.</p>
+        </div>
+        <div id="board-count" class="text-xs text-ink-500">—</div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-strip">
+        <div class="relative flex-1 min-w-[220px] max-w-[420px]">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"></i>
+          <input id="f-search" placeholder="Search features…" class="filter w-full pl-9" />
+        </div>
+        <select id="f-repo"   class="filter"><option value="">All products</option></select>
+        <select id="f-dev"    class="filter"><option value="">All people</option></select>
+        <select id="f-sprint" class="filter"><option value="">All sprints</option></select>
+      </div>
+
+      <!-- Quick chips -->
+      <div class="chip-row">
+        <button class="chip" data-chip="blocked">Only Blocked</button>
+        <button class="chip" data-chip="qa">Waiting for QA</button>
+        <button class="chip" data-chip="ready">Ready for Production</button>
+        <button class="chip" data-chip="today">Updated Today</button>
+        <button class="chip" data-chip="mine">Assigned to Me</button>
+        <button class="chip" id="chip-clear" title="Clear chips"><i data-lucide="x" class="w-3 h-3"></i></button>
+        <label class="ml-auto text-[11px] text-ink-500 flex items-center gap-1">
+          <input type="checkbox" id="chip-me-input" class="hidden" />
+          I am <input id="me-name" class="filter" style="min-width:120px;height:26px;padding:0 8px;font-size:12px" placeholder="your login" />
+        </label>
+      </div>
+
+      <div id="kanban" class="kanban-grid"></div>
+
+      <!-- Promotion Queue — features live in an earlier env but not the next.
+           Was previously "What's missing where" with labels like "In Dev, not in
+           Test" that read like engineering jargon; renamed so a PM/exec can
+           scan it. The "Deployment Presence" tiles that used to sit here
+           duplicated the kanban columns above (Backlog / Dev / Test / Prod)
+           and were removed. -->
+      <div class="section-head" style="margin-top:24px">
+        <h3>Promotion Queue</h3>
+        <span id="dp-source" class="section-sub">Features waiting to move to the next environment</span>
+      </div>
+      <div id="deployment-diff" class="dp-diff-grid"></div>
+    </section>
+
+    <!-- =========================== ROADMAP =========================== -->
+    <section id="tab-roadmap" class="tab-panel hidden space-y-4">
+      <div class="flex items-baseline justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="text-xl font-semibold tracking-tight">Feature Roadmap</h2>
+          <p class="text-sm text-ink-500">Quarterly plan. Statuses update automatically as work moves in GitHub.</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-roadmap-import" class="btn-secondary text-xs"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Import CSV / JSON</button>
+          <button id="btn-roadmap-seed"   class="btn-secondary text-xs"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i>Load sample plan</button>
+        </div>
+      </div>
+      <div class="roadmap-card">
+        <div id="roadmap-timeline" class="roadmap-timeline"></div>
+        <div id="roadmap-lanes" class="roadmap-lanes"></div>
+        <div id="roadmap-empty" class="hidden text-center py-12 text-sm text-ink-500">
+          <div class="text-4xl mb-2">🗺️</div>
+          <div>No roadmap items yet. Import a CSV/JSON, or click <b>Load sample plan</b>.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mx-auto max-w-[1500px] px-6 py-8 text-xs text-ink-500">
+    Feature Tracker · Auto-refresh every <span id="refresh-cadence">60</span>s
+  </footer>
+
+  <!-- ==== Import dialog ==== -->
+  <div id="import-dialog" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/40" data-import-close></div>
+    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="font-semibold">Import Roadmap</div>
+          <div class="text-xs text-ink-500">Paste CSV or JSON — or upload a file below.</div>
+        </div>
+        <button class="icon-btn" data-import-close><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <textarea id="import-text" class="w-full h-40 border border-surface-border rounded-lg p-3 text-xs mono focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+        placeholder="name,quarter,status,owner,description
+User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
+      <div class="mt-3 flex items-center gap-2">
+        <label class="btn-secondary text-xs cursor-pointer">
+          <i data-lucide="paperclip" class="w-3.5 h-3.5"></i>Choose file
+          <input id="import-file" type="file" accept=".csv,.json,.txt" class="hidden" />
+        </label>
+        <div class="ml-auto flex gap-2">
+          <button class="btn-secondary" data-import-close>Cancel</button>
+          <button id="btn-import-save" class="btn-primary">Import</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==== Executive Playback ==== -->
+  <div id="playback" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" data-playback-close></div>
+    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] max-w-[94vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
+      <div class="pb-head">
+        <div class="flex items-center gap-2">
+          <i data-lucide="play-circle" class="w-4 h-4 text-emerald-500"></i>
+          <div class="font-semibold text-sm">Executive Playback · 30 seconds</div>
+        </div>
+        <div class="pb-controls">
+          <button id="pb-prev" class="icon-btn" title="Previous"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+          <button id="pb-play" class="icon-btn" title="Pause / play"><i data-lucide="pause" class="w-4 h-4"></i></button>
+          <button id="pb-next" class="icon-btn" title="Next"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+          <button class="icon-btn" data-playback-close title="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+      </div>
+      <div id="pb-slide" class="pb-slide"></div>
+      <div class="pb-progress"><div id="pb-bar"></div></div>
+      <div class="pb-dots" id="pb-dots"></div>
+    </div>
+  </div>
+
+  <!-- ==== Drawer ==== -->
+  <div id="drawer" class="fixed inset-0 z-40 hidden">
+    <div class="absolute inset-0 bg-slate-900/40" data-drawer-close></div>
+    <aside class="absolute right-0 top-0 h-full w-full sm:w-[440px] bg-white dark:bg-slate-900 shadow-xl overflow-y-auto animate-slide-in">
+      <div class="drawer-head">
+        <span id="drawer-swatch" class="drawer-swatch"></span>
+        <div class="font-semibold text-sm truncate flex-1" id="drawer-title">Feature</div>
+        <button class="icon-btn" data-drawer-close><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div id="drawer-body" class="p-5 space-y-5 text-sm"></div>
+    </aside>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
