@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configuration · Engineering Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>(function(){const s=localStorage.getItem('theme');if(s==='dark'||(!s&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')})();</script>
+</head>
+<body class="min-h-full font-[Inter] text-slate-800 dark:text-slate-100 antialiased bg-gradient-to-br from-slate-100 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+  <div class="mx-auto max-w-3xl px-4 md:px-6 py-10">
+    <div class="flex items-center gap-3 mb-6">
+      <a href="/" class="icon-btn"><i data-lucide="arrow-left" class="w-4 h-4"></i></a>
+      <div>
+        <h1 class="text-2xl font-bold">Configuration</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Connect to GitHub, or explore in demo mode.</p>
+      </div>
+    </div>
+    <div id="banner" class="hidden glass rounded-2xl px-4 py-3 mb-4 text-sm"></div>
+    <form id="cfg-form" class="glass rounded-2xl p-6 space-y-4">
+      <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 font-semibold">GitHub</div>
+      <div>
+        <label class="text-sm font-medium">Personal Access Token</label>
+        <input name="token" type="password" autocomplete="new-password" placeholder="ghp_… or github_pat_… (leave empty to keep the existing one)"
+          class="mt-1 w-full px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-400" />
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Stored server-side. Scopes: repo (read), read:org, read:user.</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Scope</label>
+        <input name="scope" placeholder="owner/repo, another-owner/repo  — OR — org-name"
+          class="mt-1 w-full px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-400" />
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Comma-separated. A plain org name pulls its most-recently-pushed repos.</p>
+      </div>
+
+      <div class="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 font-semibold">Azure DevOps deployments <span class="text-slate-400 font-normal normal-case">(optional)</span></div>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Paste the Azure DevOps project URL for each environment. Same project across all three slots is fine — the stage-name keywords in <code class="mono">.env</code> decide which release stage fills which slot.</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="text-xs font-medium">Development URL</label>
+          <input name="azdoUrlDev" placeholder="https://dev.azure.com/org/project"
+            class="mt-1 w-full px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-400 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs font-medium">Testing URL</label>
+          <input name="azdoUrlTest" placeholder="https://dev.azure.com/org/project"
+            class="mt-1 w-full px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-400 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs font-medium">Production URL</label>
+          <input name="azdoUrlProd" placeholder="https://dev.azure.com/org/project"
+            class="mt-1 w-full px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-400 text-sm" />
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-medium">Azure DevOps PAT</label>
+        <input name="azdoPat" type="password" autocomplete="new-password" placeholder="Personal Access Token (Build:Read + Release:Read) — leave empty to keep the existing one"
+          class="mt-1 w-full px-3 py-2 rounded-lg bg-white/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-400" />
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">One PAT for all three URLs. Create at <span class="mono">dev.azure.com/&lt;org&gt;/_usersSettings/tokens</span>.</p>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <a href="/?demo=1" class="btn-secondary">View demo</a>
+        <button type="submit" class="btn-primary">Save</button>
+      </div>
+    </form>
+
+    <div class="glass rounded-2xl p-6 mt-6">
+      <h2 class="font-semibold mb-2">Webhooks (optional, real-time)</h2>
+      <p class="text-sm text-slate-600 dark:text-slate-300">
+        Point your GitHub webhook to <code class="mono">/api/webhooks/github</code> with events: push, pull_request, pull_request_review, deployment_status, workflow_run, release. Set <code class="mono">GITHUB_WEBHOOK_SECRET</code> in .env and use the same secret.
+      </p>
+    </div>
+  </div>
+  <script>
+    lucide.createIcons();
+    (async () => {
+      const banner = document.getElementById('banner');
+      const form = document.getElementById('cfg-form');
+      try {
+        const res = await fetch('/api/config'); const cur = await res.json();
+        form.scope.value = (cur.scope || []).join(',');
+        // Pre-fill AZDO URL slots but leave the PAT empty (never render it back)
+        const urls = cur.azdo?.urls || {};
+        if (form.azdoUrlDev)  form.azdoUrlDev.value  = urls.Development || '';
+        if (form.azdoUrlTest) form.azdoUrlTest.value = urls.Test || '';
+        if (form.azdoUrlProd) form.azdoUrlProd.value = urls.Production || '';
+        // Show connection status
+        const parts = [];
+        if (cur.configured) parts.push(`GitHub: ${cur.scope.join(', ')}`);
+        if (cur.azdo?.configured) parts.push(`Azure DevOps: ${cur.azdo.projects.map(p => p.project).join(', ')}`);
+        if (parts.length) {
+          banner.classList.remove('hidden');
+          banner.className = 'glass rounded-2xl px-4 py-3 mb-4 text-sm border border-emerald-300/60 dark:border-emerald-400/30';
+          banner.textContent = 'Connected — ' + parts.join(' · ');
+        }
+      } catch {}
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const body = {};
+        if (form.token.value)  body.token = form.token.value;
+        if (form.scope.value !== undefined) body.scope = form.scope.value.split(',').map(s => s.trim()).filter(Boolean);
+        // Always send azdoUrls (even blanks) so a user can clear a slot; only send PAT when they type one.
+        body.azdoUrls = {
+          Development: form.azdoUrlDev.value.trim(),
+          Test:        form.azdoUrlTest.value.trim(),
+          Production:  form.azdoUrlProd.value.trim(),
+        };
+        if (form.azdoPat.value) body.azdoPat = form.azdoPat.value;
+        const res = await fetch('/api/config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        banner.classList.remove('hidden');
+        if (res.ok) {
+          banner.className = 'glass rounded-2xl px-4 py-3 mb-4 text-sm border border-emerald-300/60 dark:border-emerald-400/30';
+          banner.textContent = 'Saved. Redirecting…';
+          setTimeout(() => location.href = '/', 700);
+        } else {
+          banner.className = 'glass rounded-2xl px-4 py-3 mb-4 text-sm border border-rose-300/60 dark:border-rose-400/30';
+          banner.textContent = data.error || 'Failed to save.';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

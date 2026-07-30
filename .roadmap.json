@@ -1,0 +1,115 @@
+{
+  "items": [
+    {
+      "id": "user-authentication",
+      "name": "User Authentication",
+      "description": "Login, sign-up, password reset",
+      "quarter": "Q1",
+      "status": "Production",
+      "owner": "anika-r",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "partner-portal",
+      "name": "Partner Portal",
+      "description": "Onboard partners with self-service",
+      "quarter": "Q1",
+      "status": "Production",
+      "owner": "marcus-lee",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "one-click-checkout",
+      "name": "One-Click Checkout",
+      "description": "Reduce cart drop-off",
+      "quarter": "Q2",
+      "status": "Testing",
+      "owner": "priya-n",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "multi-currency-invoicing",
+      "name": "Multi-Currency Invoicing",
+      "description": "Bill in customer currency",
+      "quarter": "Q2",
+      "status": "Development",
+      "owner": "jordan-ok",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "passwordless-sign-in",
+      "name": "Passwordless Sign-In",
+      "description": "Magic-link email login",
+      "quarter": "Q3",
+      "status": "Development",
+      "owner": "sofia-a",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "webhook-retry-with-backoff",
+      "name": "Webhook Retry With Backoff",
+      "description": "Reliability for outbound events",
+      "quarter": "Q3",
+      "status": "Not Started",
+      "owner": "rahul-m",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "fraud-score-v2",
+      "name": "Fraud Score v2",
+      "description": "Better risk model",
+      "quarter": "Q3",
+      "status": "Blocked",
+      "owner": "emma-c",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "bulk-merchant-import",
+      "name": "Bulk Merchant Import",
+      "description": "CSV import with validation",
+      "quarter": "Q4",
+      "status": "Not Started",
+      "owner": "david-p",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "feature-flag-rollouts",
+      "name": "Feature-Flag Rollouts",
+      "description": "Gradual releases",
+      "quarter": "Q4",
+      "status": "Not Started",
+      "owner": "anika-r",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    },
+    {
+      "id": "gdpr-data-export",
+      "name": "GDPR Data Export",
+      "description": "Self-service user data export",
+      "quarter": "Q4",
+      "status": "Waiting",
+      "owner": "marcus-lee",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
+    }
+  ],
+  "updatedAt": "2026-07-27T10:37:44.553Z"
+}
