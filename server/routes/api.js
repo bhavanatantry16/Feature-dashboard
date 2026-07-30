@@ -122,6 +122,26 @@ apiRouter.post('/roadmap', express.json({ limit: '2mb' }), (req, res) => {
   res.json(setRoadmap(items));
 });
 
+// Add / update / delete a single item without re-sending the whole plan —
+// wired to the inline "Add feature" button and the per-card delete button
+// on the Roadmap tab, so the CSV isn't the only way to change the plan.
+apiRouter.post('/roadmap/item', express.json({ limit: '32kb' }), (req, res) => {
+  const item = req.body || {};
+  if (!item.name || !String(item.name).trim()) return res.status(400).json({ error: 'name required' });
+  const current = getRoadmap().items || [];
+  // Upsert by id when the client sends one (edit case); else append.
+  const idx = item.id ? current.findIndex(i => i.id === item.id) : -1;
+  const next = idx >= 0
+    ? current.map((i, k) => k === idx ? { ...i, ...item } : i)
+    : [...current, item];
+  res.json(setRoadmap(next));
+});
+
+apiRouter.delete('/roadmap/item/:id', (req, res) => {
+  const current = getRoadmap().items || [];
+  res.json(setRoadmap(current.filter(i => i.id !== req.params.id)));
+});
+
 // Upload as raw CSV, JSON, or line-per-name plaintext (Content-Type decides).
 apiRouter.post('/roadmap/upload', express.text({ type: '*/*', limit: '2mb' }), (req, res) => {
   const ct = (req.get('Content-Type') || '').toLowerCase();

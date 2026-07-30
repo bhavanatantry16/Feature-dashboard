@@ -520,3 +520,17 @@ body { background: var(--bg); color: var(--ink-900); }
   a[href]::after { content: ''; }              /* don't append URLs to links */
   main { max-width: none !important; padding: 0 !important; }
 }
+
+/* Delete-button on each roadmap card — hidden until hover so it stays quiet. */
+.roadmap-del {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: rgba(148,163,184,.15); color: var(--ink-500);
+  border: none; cursor: pointer;
+  opacity: 0; transition: opacity .12s ease, background .12s ease, color .12s ease;
+}
+.roadmap-item:hover .roadmap-del { opacity: 1; }
+.roadmap-del:hover { background: #fee2e2; color: #dc2626; }
+.dark .roadmap-del { background: rgba(148,163,184,.18); }
+.dark .roadmap-del:hover { background: rgba(220,38,38,.25); color: #fecaca; }
