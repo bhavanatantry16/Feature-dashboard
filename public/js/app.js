@@ -2,6 +2,8 @@ import { api } from './api.js';
 import { fmt, avatar, humanize, niceName, actionLabel, debounce, statusToneKey } from './utils.js';
 import { showFeature, setSnapshot } from './drawer.js';
 import { renderRoadmap, openImport, closeImport, openAddFeature, closeAddFeature } from './roadmap.js';
+import { initTeam, refreshTeam } from './team.js';
+import { initBugs, refreshBugs } from './bugs.js';
 
 const state = {
   snapshot: null,
@@ -33,10 +35,12 @@ async function boot() {
   // login page. Loading the snapshot before we know who we are wastes a
   // round-trip and (once we scope repositories to per-user permissions)
   // would show the wrong data. Handled by /api/auth/me.
+  let me = null;
   try {
     const meResp = await fetch('/api/auth/me').then(r => r.json());
     if (!meResp.authenticated) { location.href = '/admin/login.html'; return; }
-    renderSignedInHeader(meResp.user);
+    me = meResp.user;
+    renderSignedInHeader(me);
   } catch {
     // API unreachable — degrade gracefully, no login redirect loop.
   }
@@ -46,6 +50,13 @@ async function boot() {
     document.getElementById('refresh-cadence').textContent = state.refreshSeconds;
   } catch {}
   await Promise.all([refreshSnapshot(false), refreshRoadmap()]);
+  // Bugs is available to every signed-in user (view.bugs is on every role
+  // template). Team is only initialised for Admin+ — for everyone else the
+  // tab button stays hidden by renderSignedInHeader below.
+  initBugs();
+  if (['Admin', 'Super Admin'].includes(me?.role)) {
+    initTeam({ me, repositories: state.snapshot?.repositories || [] });
+  }
   clearInterval(state.refreshTimer);
   state.refreshTimer = setInterval(() => refreshSnapshot(false), state.refreshSeconds * 1000);
   api.subscribeEvents(() => refreshSnapshot(false));
@@ -63,9 +74,12 @@ function renderSignedInHeader(user) {
   roleEl.textContent = user.role || 'Viewer';
   me.classList.remove('hidden');
   signout?.classList.remove('hidden');
-  // Admin shortcut only shows for Admin / Super Admin. Everyone else
-  // doesn't need it and shouldn't see a link that 403s.
-  if (['Admin', 'Super Admin'].includes(user.role)) adminLink?.classList.remove('hidden');
+  // Admin shortcut + Team tab only show for Admin / Super Admin. Everyone
+  // else doesn't need them and shouldn't see links that 403.
+  if (['Admin', 'Super Admin'].includes(user.role)) {
+    adminLink?.classList.remove('hidden');
+    document.getElementById('tab-team-btn')?.classList.remove('hidden');
+  }
   signout?.addEventListener('click', async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     location.href = '/admin/login.html';
@@ -73,18 +87,25 @@ function renderSignedInHeader(user) {
 }
 
 // ---------- Tabs ----------
+const VALID_TABS = ['overview','board','roadmap','bugs','team'];
 function setupTabs() {
-  document.querySelectorAll('.tab').forEach(btn => {
+  document.querySelectorAll('.tab[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => activateTab(btn.dataset.tab));
   });
   const initial = (location.hash.replace('#','') || 'overview');
-  activateTab(['overview','board','roadmap'].includes(initial) ? initial : 'overview');
+  activateTab(VALID_TABS.includes(initial) ? initial : 'overview');
 }
 function activateTab(tab) {
   state.currentTab = tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'tab-' + tab));
   location.hash = tab;
+  // Lazy-load tab data on first activation. Bugs is fetched on every visit
+  // because volume is small and freshness matters; Team refreshes when the
+  // Admin lands on it to avoid stale role/permission info after edits made
+  // in another window.
+  if (tab === 'bugs') refreshBugs();
+  if (tab === 'team') refreshTeam();
 }
 
 // ---------- Data ----------
@@ -389,7 +410,7 @@ function renderReleases(id, items) {
 //                    not yet released.
 //   Production     — shipped.
 const COLUMNS = [
-  { key: 'Backlog',      tone: 'backlog',  label: 'Backlog',          empty: 'Nothing waiting to be picked up.' },
+  { key: 'Backlog',      tone: 'backlog',  label: 'Feature Requests', empty: 'No open feature requests.' },
   { key: 'PRCreated',    tone: 'pr',       label: 'PR Created',       empty: 'No open pull requests.' },
   { key: 'Development',  tone: 'dev',      label: 'Development',      empty: 'Nothing being built right now.' },
   { key: 'Testing',      tone: 'test',     label: 'Testing',          empty: 'Nothing in QA.' },

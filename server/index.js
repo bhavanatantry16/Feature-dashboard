@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { config, persistSettings } from './config.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter, adminRouter } from './routes/auth.js';
+import { bugsRouter } from './routes/bugs.js';
 import { sessionMiddleware, initPassport, requireAuth, requireRole } from './services/authService.js';
 import { ensureBootstrapAdmin } from './services/userStore.js';
 
@@ -29,10 +30,15 @@ if (!config.sessionSecret) {
   persistSettings({ sessionSecret: config.sessionSecret });
 }
 
-// Auth routes are public (login / OAuth). Admin routes are gated inside
-// the router itself (requireRole('Admin')).
+// Auth routes are public (login / OAuth). Admin/team routes are gated
+// inside the router itself (requireRole('Admin')). `/api/team` is the
+// same router as `/api/admin` — kept because the UI now uses "Team"
+// terminology and older bookmarks still work.
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/team', adminRouter);
+// Bugs are gated per-route: view for any signed-in user, delete Admin+.
+app.use('/api/bugs', requireAuth, bugsRouter);
 
 // Everything else under /api requires a signed-in user. A handful of
 // endpoints stay public because the login page uses them or they're
@@ -57,6 +63,12 @@ const publicDir = path.join(__dirname, '..', 'public');
 // are gated by requireRole('Admin').
 app.use('/admin', express.static(path.join(publicDir, 'admin')));
 
+// The `shared/` folder holds ES modules imported by BOTH server and
+// client (e.g. permissions.js). Exposing it as a static route lets the
+// browser resolve `../../shared/foo.js` from a public/js module without
+// duplicating the file.
+app.use('/shared', express.static(path.join(__dirname, '..', 'shared')));
+
 // Gate the main dashboard behind auth too — otherwise anyone hitting /
 // sees the app before logging in. Unauth requests bounce to the login
 // page. Direct file requests for /config.html etc. also bounce.
@@ -70,6 +82,10 @@ app.use((req, res, next) => {
   if (!req.user)                              return res.redirect('/admin/login.html');
   next();
 });
+
+// Old /admin/index.html got folded into the main app as the "Team" tab.
+// Redirect any bookmark to /#team so nobody hits a 404.
+app.get(['/admin', '/admin/', '/admin/index.html'], (_req, res) => res.redirect('/#team'));
 
 app.use(express.static(publicDir, { extensions: ['html'] }));
 

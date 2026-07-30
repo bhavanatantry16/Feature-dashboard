@@ -123,6 +123,9 @@ export function upsertUser(input) {
     if (input.disabled !== undefined)      user.disabled = Boolean(input.disabled);
     if (input.repositories !== undefined)  user.repositories = Array.isArray(input.repositories) ? input.repositories : [];
     if (input.teams !== undefined)         user.teams = Array.isArray(input.teams) ? input.teams : [];
+    if (input.permissions !== undefined)   user.permissions = Array.isArray(input.permissions) ? input.permissions : null;
+    if (input.notifications !== undefined) user.notifications = { ...(user.notifications || {}), ...input.notifications };
+    if (input.avatarUrl !== undefined)     user.avatarUrl = input.avatarUrl || null;
     if (passwordHash) {
       user.passwordHash = passwordHash;
       user.mustChangePassword = Boolean(input.mustChangePassword);
@@ -145,6 +148,13 @@ export function upsertUser(input) {
       lastLoginAt:      null,
       repositories:     Array.isArray(input.repositories) ? input.repositories : [],
       teams:            Array.isArray(input.teams) ? input.teams : [],
+      // permissions: null = "inherit from role template" (default). An array
+      // means the admin has overridden the template for this user. This
+      // shape lets us tell the two states apart in the UI ("inheriting
+      // Developer defaults" vs "customised").
+      permissions:      Array.isArray(input.permissions) ? input.permissions : null,
+      notifications:    input.notifications || { email: true, slack: false, teams: false, weeklyReport: true, releaseNotification: true },
+      avatarUrl:        input.avatarUrl || null,
     };
     data.users.push(user);
   }
