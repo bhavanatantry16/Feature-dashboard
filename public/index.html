@@ -166,13 +166,20 @@
 
       <div id="kanban" class="kanban-grid"></div>
 
-      <!-- Issues & Bugs — dedicated triage list, deliberately kept off the
-           kanban so feature delivery isn't interleaved with defect triage.
-           Sourced from open GitHub issues whose labels or titles look like
-           bugs (see isBugLike() in app.js). -->
+      <!-- Bugs on the Board.
+           Same store as the dedicated /#bugs tab — adding a bug here or
+           there both hit /api/bugs, so the two surfaces stay in sync
+           automatically. The buttons are duplicated here so the person
+           looking at the board can log a defect without switching tabs. -->
       <div class="section-head" style="margin-top:24px">
-        <h3>Issues &amp; Bugs</h3>
-        <span id="bugs-source" class="section-sub">Open defects across your repositories</span>
+        <div>
+          <h3>Bugs</h3>
+          <span id="bugs-source" class="section-sub">Open defects — same list as the Bugs tab, kept together so you never lose it</span>
+        </div>
+        <div class="ml-auto flex gap-2">
+          <button id="btn-board-bug-import" class="btn-secondary text-xs"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Import bugs</button>
+          <button id="btn-board-bug-add"    class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add bug</button>
+        </div>
       </div>
       <div id="bugs-list" class="bugs-list"></div>
 

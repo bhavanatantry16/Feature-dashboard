@@ -32,6 +32,20 @@ export async function initBugs() {
   wireImport();
   $('btn-bug-add').addEventListener('click', () => openDrawer(null));
   $('btn-bug-import').addEventListener('click', () => openImport());
+
+  // Board-side entry points — same drawers, no duplicated implementation.
+  // The Board renders a bug list backed by /api/bugs; its buttons hand off
+  // to us here, and its rows dispatch `board-bug-open` events which we
+  // resolve by fetching the record and opening the drawer.
+  $('btn-board-bug-add')?.addEventListener('click', () => openDrawer(null));
+  $('btn-board-bug-import')?.addEventListener('click', () => openImport());
+  window.addEventListener('board-bug-open', async (e) => {
+    const id = e.detail?.id; if (!id) return;
+    try {
+      const r = await fetch('/api/bugs/' + encodeURIComponent(id)).then(r => r.json());
+      if (r?.bug) openDrawer(r.bug);
+    } catch {}
+  });
 }
 
 export async function refreshBugs() {
@@ -39,6 +53,10 @@ export async function refreshBugs() {
     const r = await fetch('/api/bugs').then(r => r.json());
     state.bugs = r.bugs || [];
     renderTable();
+    // Let the Board's bug list refresh too — it fetches /api/bugs
+    // independently so a change from either surface propagates cheaply
+    // without threading state through the app.
+    window.dispatchEvent(new CustomEvent('bugs-changed'));
   } catch {
     $('bugs-table-wrap').innerHTML = errorState('Failed to load bugs.');
   }
