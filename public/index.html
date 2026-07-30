@@ -39,6 +39,8 @@
         <button class="tab active" data-tab="overview"><i data-lucide="gauge" class="w-4 h-4"></i>Overview</button>
         <button class="tab"        data-tab="board"><i data-lucide="layout-grid" class="w-4 h-4"></i>Board</button>
         <button class="tab"        data-tab="roadmap"><i data-lucide="map" class="w-4 h-4"></i>Roadmap</button>
+        <button class="tab"        data-tab="bugs"><i data-lucide="bug" class="w-4 h-4"></i>Bugs</button>
+        <button class="tab hidden" data-tab="team" id="tab-team-btn"><i data-lucide="users" class="w-4 h-4"></i>Team</button>
       </nav>
 
       <div class="ml-auto flex items-center gap-2">
@@ -52,7 +54,7 @@
         <button id="btn-refresh" class="icon-btn" title="Refresh"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
         <button id="btn-theme"   class="icon-btn" title="Theme"><i data-lucide="moon" class="w-4 h-4"></i></button>
         <a href="/config.html" class="icon-btn" title="Settings"><i data-lucide="settings" class="w-4 h-4"></i></a>
-        <a href="/admin/index.html" id="header-admin-link" class="icon-btn hidden" title="Admin"><i data-lucide="shield" class="w-4 h-4"></i></a>
+        <a href="#team" id="header-admin-link" class="icon-btn hidden" title="Team Management"><i data-lucide="users" class="w-4 h-4"></i></a>
         <span id="header-me" class="header-me hidden">
           <span id="header-me-name">—</span>
           <span id="header-me-role" class="header-me-role">—</span>
@@ -187,6 +189,61 @@
       <div id="deployment-diff" class="dp-diff-grid"></div>
     </section>
 
+    <!-- =========================== BUGS =========================== -->
+    <section id="tab-bugs" class="tab-panel hidden space-y-4">
+      <div class="page-head">
+        <div>
+          <h2 class="page-title">Bugs &amp; Issues</h2>
+          <p class="page-sub">Defect triage — separate from feature delivery. Manual entries persist here; imports pull from CSV / JSON / GitHub / Jira / Azure / Linear exports.</p>
+        </div>
+        <div class="page-actions">
+          <button id="btn-bug-import" class="btn-secondary text-xs"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Import bugs</button>
+          <button id="btn-bug-add"    class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add bug</button>
+        </div>
+      </div>
+
+      <div class="filter-strip">
+        <div class="relative flex-1 min-w-[220px] max-w-[420px]">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"></i>
+          <input id="bug-search" placeholder="Search bugs…" class="filter w-full pl-9" />
+        </div>
+        <select id="bug-filter-severity" class="filter"><option value="">All severities</option></select>
+        <select id="bug-filter-status"   class="filter"><option value="">All statuses</option></select>
+        <select id="bug-filter-env"      class="filter"><option value="">All environments</option></select>
+      </div>
+
+      <div id="bugs-table-wrap" class="admin-table-wrap"></div>
+    </section>
+
+    <!-- =========================== TEAM =========================== -->
+    <section id="tab-team" class="tab-panel hidden space-y-4">
+      <div class="page-head">
+        <div>
+          <h2 class="page-title">Team Management</h2>
+          <p class="page-sub">Manage users, roles and permissions. Authentication settings live in <a href="/config.html" class="page-link">Settings</a>.</p>
+        </div>
+        <div class="page-actions">
+          <button id="btn-team-add" class="btn-primary text-xs"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i>Add User</button>
+        </div>
+      </div>
+
+      <div class="filter-strip">
+        <div class="relative flex-1 min-w-[220px] max-w-[420px]">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"></i>
+          <input id="team-search" placeholder="Search users…" class="filter w-full pl-9" />
+        </div>
+        <select id="team-filter-role"       class="filter"><option value="">All roles</option></select>
+        <select id="team-filter-department" class="filter"><option value="">All departments</option></select>
+        <select id="team-filter-status"     class="filter">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="disabled">Disabled</option>
+        </select>
+      </div>
+
+      <div id="team-table-wrap" class="admin-table-wrap"></div>
+    </section>
+
     <!-- =========================== ROADMAP =========================== -->
     <section id="tab-roadmap" class="tab-panel hidden space-y-4">
       <div class="flex items-baseline justify-between flex-wrap gap-2">
@@ -310,6 +367,225 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
       <div id="pb-slide" class="pb-slide"></div>
       <div class="pb-progress"><div id="pb-bar"></div></div>
       <div class="pb-dots" id="pb-dots"></div>
+    </div>
+  </div>
+
+  <!-- ==========================================================
+       User drawer — Add / Edit team member (right-side, 40% width).
+       Five sections per spec: Basic Info / Role / Permissions preview /
+       Repository Access / Notifications. Access section (temp password
+       + disabled) sits at the bottom.
+       ========================================================== -->
+  <aside id="user-drawer" class="side-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="user-drawer-title">
+    <div class="side-drawer-scrim" data-user-drawer-close></div>
+    <div class="side-drawer-panel">
+      <header class="side-drawer-head">
+        <div>
+          <div id="user-drawer-title" class="side-drawer-title">Add User</div>
+          <div class="side-drawer-sub">Enterprise team member</div>
+        </div>
+        <button class="icon-btn" data-user-drawer-close aria-label="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </header>
+
+      <div class="side-drawer-body">
+        <input type="hidden" id="ud-id" />
+
+        <section class="drawer-section">
+          <div class="drawer-section-head">
+            <h3>Basic Information</h3>
+            <span>Name, contact and department</span>
+          </div>
+          <label class="admin-label">Full Name
+            <input id="ud-name" class="admin-input" placeholder="Anika Ramesh" />
+          </label>
+          <label class="admin-label">Email
+            <input id="ud-email" type="email" class="admin-input" placeholder="anika@company.com" />
+          </label>
+          <label class="admin-label">Department
+            <input id="ud-department" class="admin-input" placeholder="Platform, QA, Product…" />
+          </label>
+          <label class="admin-label">Profile Photo URL <span class="text-ink-400">(optional)</span>
+            <input id="ud-avatar" class="admin-input" placeholder="https://…" />
+          </label>
+        </section>
+
+        <section class="drawer-section">
+          <div class="drawer-section-head">
+            <h3>Assign Role</h3>
+            <span>Role is a permission template — override individual permissions below</span>
+          </div>
+          <label class="admin-label">Role
+            <select id="ud-role" class="admin-input"></select>
+          </label>
+          <label class="admin-label">GitHub Login <span class="text-ink-400">(optional — for OAuth link)</span>
+            <input id="ud-github" class="admin-input" placeholder="anika-r" />
+          </label>
+        </section>
+
+        <section class="drawer-section">
+          <div class="drawer-section-head">
+            <h3>Permissions</h3>
+            <span id="ud-perm-source">Inheriting from role template</span>
+          </div>
+          <div id="ud-permissions" class="perm-grid"></div>
+          <div class="drawer-section-foot">
+            <button id="ud-perm-reset" class="btn-secondary text-xs" type="button" hidden>Reset to role defaults</button>
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <div class="drawer-section-head">
+            <h3>Repository Access</h3>
+            <span>Pick repositories this user can see data for. Empty means <b>all</b>.</span>
+          </div>
+          <div id="ud-repos" class="repo-picker"></div>
+        </section>
+
+        <section class="drawer-section">
+          <div class="drawer-section-head">
+            <h3>Notifications</h3>
+            <span>Preferences stored now — delivery layer is a follow-up PR (SMTP / Slack / Teams)</span>
+          </div>
+          <label class="notif-row"><input type="checkbox" id="ud-notif-email" checked /> Email updates</label>
+          <label class="notif-row"><input type="checkbox" id="ud-notif-slack" /> Slack notifications</label>
+          <label class="notif-row"><input type="checkbox" id="ud-notif-teams" /> Microsoft Teams notifications</label>
+          <label class="notif-row"><input type="checkbox" id="ud-notif-weekly" checked /> Weekly report</label>
+          <label class="notif-row"><input type="checkbox" id="ud-notif-release" checked /> Release notifications</label>
+        </section>
+
+        <section class="drawer-section">
+          <div class="drawer-section-head">
+            <h3>Access</h3>
+            <span>Temporary password &amp; enable/disable</span>
+          </div>
+          <label class="admin-label">Temporary Password <span class="text-ink-400">(leave blank to keep current / skip local login)</span>
+            <input id="ud-password" type="text" class="admin-input" placeholder="min 8 chars" />
+          </label>
+          <label class="notif-row"><input type="checkbox" id="ud-disabled" /> Disabled (can't sign in)</label>
+        </section>
+      </div>
+
+      <footer class="side-drawer-foot">
+        <div id="ud-error" class="side-drawer-error"></div>
+        <div class="ml-auto flex gap-2">
+          <button class="btn-secondary" data-user-drawer-close>Cancel</button>
+          <button id="btn-user-save" class="btn-primary">Create User</button>
+        </div>
+      </footer>
+    </div>
+  </aside>
+
+  <!-- ==========================================================
+       Bug drawer — Add / Edit + full details view.
+       Same shell as the user drawer; content switches based on whether
+       we're creating or opening an existing bug.
+       ========================================================== -->
+  <aside id="bug-drawer" class="side-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="bug-drawer-title">
+    <div class="side-drawer-scrim" data-bug-drawer-close></div>
+    <div class="side-drawer-panel">
+      <header class="side-drawer-head">
+        <div>
+          <div id="bug-drawer-title" class="side-drawer-title">Add Bug</div>
+          <div id="bug-drawer-sub" class="side-drawer-sub">New defect entry</div>
+        </div>
+        <button class="icon-btn" data-bug-drawer-close aria-label="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </header>
+
+      <div class="side-drawer-body" id="bug-drawer-body">
+        <input type="hidden" id="bd-id" />
+
+        <section class="drawer-section">
+          <label class="admin-label">Title
+            <input id="bd-title" class="admin-input" placeholder="Authentication timeout after login" />
+          </label>
+          <label class="admin-label">Description
+            <textarea id="bd-description" class="admin-input" rows="3" placeholder="What's going wrong?"></textarea>
+          </label>
+        </section>
+
+        <section class="drawer-section">
+          <div class="drawer-section-head"><h3>Classification</h3></div>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="admin-label">Severity <select id="bd-severity" class="admin-input"></select></label>
+            <label class="admin-label">Priority <select id="bd-priority" class="admin-input"></select></label>
+            <label class="admin-label">Status   <select id="bd-status"   class="admin-input"></select></label>
+            <label class="admin-label">Environment <select id="bd-environment" class="admin-input"></select></label>
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <div class="drawer-section-head"><h3>People &amp; Links</h3></div>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="admin-label">Reporter <input id="bd-reporter" class="admin-input" placeholder="you@company.com" /></label>
+            <label class="admin-label">Assignee <input id="bd-assignee" class="admin-input" placeholder="dev@company.com" /></label>
+            <label class="admin-label">Repository <input id="bd-repo" class="admin-input" placeholder="org/repo" /></label>
+            <label class="admin-label">Linked Feature <input id="bd-linkedFeature" class="admin-input" placeholder="User Authentication" /></label>
+          </div>
+          <label class="admin-label">GitHub Issue URL <span class="text-ink-400">(optional)</span>
+            <input id="bd-githubIssueUrl" class="admin-input" placeholder="https://github.com/…/issues/123" />
+          </label>
+        </section>
+
+        <section class="drawer-section">
+          <div class="drawer-section-head"><h3>Reproduction</h3></div>
+          <label class="admin-label">Steps to Reproduce <textarea id="bd-stepsToReproduce" class="admin-input" rows="4"></textarea></label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="admin-label">Expected Result <textarea id="bd-expectedResult" class="admin-input" rows="3"></textarea></label>
+            <label class="admin-label">Actual Result   <textarea id="bd-actualResult"   class="admin-input" rows="3"></textarea></label>
+          </div>
+        </section>
+
+        <!-- Read-only detail sections — only shown when opened for an existing bug -->
+        <section id="bd-history-section" class="drawer-section hidden">
+          <div class="drawer-section-head"><h3>Status History</h3></div>
+          <div id="bd-history" class="bug-history"></div>
+        </section>
+        <section id="bd-comments-section" class="drawer-section hidden">
+          <div class="drawer-section-head"><h3>Comments</h3></div>
+          <div id="bd-comments" class="bug-comments"></div>
+          <div class="flex gap-2 mt-2">
+            <input id="bd-comment-input" class="admin-input" placeholder="Leave a comment…" />
+            <button id="bd-comment-add" class="btn-secondary text-xs" type="button">Post</button>
+          </div>
+        </section>
+      </div>
+
+      <footer class="side-drawer-foot">
+        <div id="bd-error" class="side-drawer-error"></div>
+        <div class="ml-auto flex gap-2">
+          <button id="bd-delete" class="admin-btn admin-btn-danger hidden" type="button">Delete</button>
+          <button class="btn-secondary" data-bug-drawer-close>Cancel</button>
+          <button id="btn-bug-save" class="btn-primary">Save Bug</button>
+        </div>
+      </footer>
+    </div>
+  </aside>
+
+  <!-- ==== Bug import dialog ==== -->
+  <div id="bug-import-dialog" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/40" data-bug-import-close></div>
+    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[620px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="font-semibold">Import Bugs</div>
+          <div class="text-xs text-ink-500">CSV or JSON. Duplicates (same title + repo) are skipped.</div>
+        </div>
+        <button class="icon-btn" data-bug-import-close><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <textarea id="bug-import-text" class="w-full h-40 border border-surface-border rounded-lg p-3 text-xs mono focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+        placeholder="title,severity,priority,status,repo,assignee,environment
+Authentication timeout,Critical,P1,Open,org/api,rahul-m,Production"></textarea>
+      <div class="mt-3 flex items-center gap-2">
+        <label class="btn-secondary text-xs cursor-pointer">
+          <i data-lucide="paperclip" class="w-3.5 h-3.5"></i>Choose file
+          <input id="bug-import-file" type="file" accept=".csv,.json,.txt" class="hidden" />
+        </label>
+        <span id="bug-import-report" class="text-xs text-ink-500"></span>
+        <div class="ml-auto flex gap-2">
+          <button class="btn-secondary" data-bug-import-close>Cancel</button>
+          <button id="btn-bug-import-save" class="btn-primary">Import</button>
+        </div>
+      </div>
     </div>
   </div>
 

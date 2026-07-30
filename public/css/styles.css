@@ -996,3 +996,192 @@ body { background: var(--bg); color: var(--ink-900); }
   font-size: 10px; font-weight: 600; color: var(--ink-500);
   text-transform: uppercase; letter-spacing: .04em;
 }
+
+/* ==========================================================
+   Page head — big title + right-side actions
+   Used across Bugs, Team, and future tabs.
+   ========================================================== */
+.page-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+.page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+.page-sub { font-size: 13px; color: var(--ink-500); margin-top: 4px; max-width: 640px; }
+.page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.page-link { color: #2563eb; text-decoration: none; }
+.page-link:hover { text-decoration: underline; }
+
+.empty-state {
+  padding: 40px 20px; text-align: center; color: var(--ink-500);
+  background: var(--surface); border: 1px dashed var(--surface-border);
+  border-radius: 16px;
+}
+
+/* ==========================================================
+   Right-side drawer — 40% width, slide-in.
+   Used by both User and Bug drawers; content differs by drawer id.
+   ========================================================== */
+.side-drawer {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; justify-content: flex-end;
+}
+.side-drawer.hidden { display: none; }
+.side-drawer-scrim {
+  position: absolute; inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  animation: sd-fade .15s ease;
+}
+.side-drawer-panel {
+  position: relative; z-index: 1;
+  width: 40vw; min-width: 480px; max-width: 720px;
+  height: 100vh; background: var(--surface);
+  display: flex; flex-direction: column;
+  box-shadow: -24px 0 60px -20px rgba(15,23,42,.25);
+  animation: sd-slide .18s cubic-bezier(.2,.7,.2,1);
+}
+@media (max-width: 800px) {
+  .side-drawer-panel { width: 100vw; min-width: 0; }
+}
+@keyframes sd-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sd-slide { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.side-drawer-head {
+  padding: 18px 22px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--surface-border);
+}
+.side-drawer-title { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.side-drawer-sub   { font-size: 12px; color: var(--ink-500); margin-top: 2px; }
+
+.side-drawer-body {
+  flex: 1; overflow-y: auto;
+  padding: 20px 22px; display: flex; flex-direction: column; gap: 18px;
+}
+.side-drawer-foot {
+  padding: 14px 22px;
+  border-top: 1px solid var(--surface-border);
+  background: var(--surface);
+  display: flex; align-items: center; gap: 8px;
+  position: sticky; bottom: 0;
+}
+.side-drawer-error { font-size: 12px; color: #b91c1c; }
+.dark .side-drawer-error { color: #fca5a5; }
+
+.drawer-section {
+  display: flex; flex-direction: column; gap: 10px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--surface-border);
+}
+.drawer-section:last-child { border-bottom: none; padding-bottom: 0; }
+.drawer-section-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin-bottom: 4px;
+}
+.drawer-section-head h3 {
+  font-size: 12.5px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--ink-700);
+}
+.drawer-section-head span {
+  font-size: 11.5px; color: var(--ink-500); text-align: right;
+}
+.drawer-section-foot { display: flex; justify-content: flex-end; }
+
+/* Permission checkboxes grouped by category */
+.perm-grid { display: flex; flex-direction: column; gap: 12px; }
+.perm-cat {
+  padding: 10px 12px; border: 1px solid var(--surface-border);
+  border-radius: 10px; background: var(--surface-muted);
+}
+.perm-cat-head {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-500); margin-bottom: 6px;
+}
+.perm-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; font-size: 13px; color: var(--ink-700);
+  cursor: pointer;
+}
+.perm-row input[type="checkbox"] { accent-color: #2563eb; }
+
+/* Repo multi-select chips */
+.repo-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.repo-chip {
+  padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface); color: var(--ink-700);
+  font-size: 12px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: background .12s, border-color .12s;
+}
+.repo-chip input { accent-color: #2563eb; }
+.repo-chip.active {
+  background: rgba(37,99,235,.08); border-color: rgba(37,99,235,.4);
+  color: #1e40af;
+}
+.dark .repo-chip.active { color: #93c5fd; background: rgba(59,130,246,.15); }
+
+.notif-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; font-size: 13px; color: var(--ink-700);
+}
+.notif-row input { accent-color: #2563eb; }
+
+/* Team table — avatar + name column */
+.team-member { display: flex; align-items: center; gap: 10px; }
+.team-avatar {
+  width: 32px; height: 32px; border-radius: 999px;
+  object-fit: cover; flex-shrink: 0;
+}
+.team-avatar-fallback {
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white; font-size: 11px; font-weight: 700;
+}
+.team-name { font-weight: 600; font-size: 13.5px; }
+.team-gh   { font-size: 11px; color: var(--ink-500); }
+.team-repos {
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  background: var(--surface-muted); font-size: 11px; color: var(--ink-700);
+  cursor: help;
+}
+
+/* Bug table — severity + status pills (extends the existing bug-sev-* set) */
+.bug-sev {
+  display: inline-block; padding: 3px 9px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.bug-status {
+  display: inline-block; padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+}
+.bug-status-open      { background: rgba(59,130,246,.15); color: #1e40af; }
+.bug-status-triage    { background: rgba(234,179,8,.15); color: #92400e; }
+.bug-status-progress  { background: rgba(139,92,246,.15); color: #6d28d9; }
+.bug-status-review    { background: rgba(20,184,166,.15); color: #0f766e; }
+.bug-status-verified  { background: rgba(16,185,129,.15); color: #065f46; }
+.bug-status-closed    { background: rgba(148,163,184,.2); color: #475569; }
+.bug-status-wontfix   { background: rgba(239,68,68,.15); color: #b91c1c; }
+.dark .bug-status-open     { color: #93c5fd; }
+.dark .bug-status-triage   { color: #fde68a; }
+.dark .bug-status-progress { color: #c4b5fd; }
+.dark .bug-status-review   { color: #5eead4; }
+.dark .bug-status-verified { color: #6ee7b7; }
+.dark .bug-status-closed   { color: #cbd5e1; }
+.dark .bug-status-wontfix  { color: #fca5a5; }
+.bug-link { font-size: 11px; color: var(--ink-500); margin-top: 2px; }
+
+/* Bug drawer — status history + comments */
+.bug-history { display: flex; flex-direction: column; gap: 8px; }
+.bug-history-row {
+  padding: 8px 10px; border-radius: 8px;
+  background: var(--surface-muted);
+  font-size: 12.5px;
+}
+.bug-comments { display: flex; flex-direction: column; gap: 8px; }
+.bug-comment {
+  padding: 10px 12px; border-radius: 10px;
+  background: var(--surface-muted);
+}
+.bug-comment-head { font-size: 12px; margin-bottom: 4px; }
+.bug-comment-body { font-size: 13px; color: var(--ink-700); white-space: pre-wrap; }
