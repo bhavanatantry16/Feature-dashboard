@@ -458,7 +458,11 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
             <h3>Access</h3>
             <span>Temporary password &amp; enable/disable</span>
           </div>
-          <label class="admin-label">Temporary Password <span class="text-ink-400">(leave blank to keep current / skip local login)</span>
+          <label class="notif-row" id="ud-send-invite-row">
+            <input type="checkbox" id="ud-send-invite" checked /> Send invitation email
+            <span class="text-xs text-ink-400" style="margin-left:auto" id="ud-send-invite-hint">On</span>
+          </label>
+          <label class="admin-label">Temporary Password <span class="text-ink-400" id="ud-password-hint">(leave blank when sending invite — user picks their own)</span>
             <input id="ud-password" type="text" class="admin-input" placeholder="min 8 chars" />
           </label>
           <label class="notif-row"><input type="checkbox" id="ud-disabled" /> Disabled (can't sign in)</label>

@@ -8,6 +8,7 @@ import { config, persistSettings } from './config.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter, adminRouter } from './routes/auth.js';
 import { bugsRouter } from './routes/bugs.js';
+import { inviteRouter, adminInviteRouter } from './routes/invites.js';
 import { sessionMiddleware, initPassport, requireAuth, requireRole } from './services/authService.js';
 import { ensureBootstrapAdmin } from './services/userStore.js';
 
@@ -35,8 +36,11 @@ if (!config.sessionSecret) {
 // same router as `/api/admin` — kept because the UI now uses "Team"
 // terminology and older bookmarks still work.
 app.use('/api/auth', authRouter);
+app.use('/api/auth', inviteRouter);        // /api/auth/invite/:token + /accept-invite (public)
 app.use('/api/admin', adminRouter);
+app.use('/api/admin', adminInviteRouter);  // /api/admin/users/:id/resend-invite + /send-reset
 app.use('/api/team', adminRouter);
+app.use('/api/team', adminInviteRouter);   // team alias
 // Bugs are gated per-route: view for any signed-in user, delete Admin+.
 app.use('/api/bugs', requireAuth, bugsRouter);
 

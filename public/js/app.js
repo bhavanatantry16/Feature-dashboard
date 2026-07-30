@@ -36,10 +36,12 @@ async function boot() {
   // round-trip and (once we scope repositories to per-user permissions)
   // would show the wrong data. Handled by /api/auth/me.
   let me = null;
+  let emailEnabled = false;
   try {
     const meResp = await fetch('/api/auth/me').then(r => r.json());
     if (!meResp.authenticated) { location.href = '/admin/login.html'; return; }
     me = meResp.user;
+    emailEnabled = Boolean(meResp.emailEnabled);
     renderSignedInHeader(me);
   } catch {
     // API unreachable — degrade gracefully, no login redirect loop.
@@ -55,7 +57,7 @@ async function boot() {
   // tab button stays hidden by renderSignedInHeader below.
   initBugs();
   if (['Admin', 'Super Admin'].includes(me?.role)) {
-    initTeam({ me, repositories: state.snapshot?.repositories || [] });
+    initTeam({ me, repositories: state.snapshot?.repositories || [], emailEnabled });
   }
   clearInterval(state.refreshTimer);
   state.refreshTimer = setInterval(() => refreshSnapshot(false), state.refreshSeconds * 1000);
