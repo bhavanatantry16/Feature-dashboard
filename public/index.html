@@ -158,6 +158,16 @@
 
       <div id="kanban" class="kanban-grid"></div>
 
+      <!-- Issues & Bugs — dedicated triage list, deliberately kept off the
+           kanban so feature delivery isn't interleaved with defect triage.
+           Sourced from open GitHub issues whose labels or titles look like
+           bugs (see isBugLike() in app.js). -->
+      <div class="section-head" style="margin-top:24px">
+        <h3>Issues &amp; Bugs</h3>
+        <span id="bugs-source" class="section-sub">Open defects across your repositories</span>
+      </div>
+      <div id="bugs-list" class="bugs-list"></div>
+
       <!-- Promotion Queue — features live in an earlier env but not the next.
            Was previously "What's missing where" with labels like "In Dev, not in
            Test" that read like engineering jargon; renamed so a PM/exec can

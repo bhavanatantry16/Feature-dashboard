@@ -169,6 +169,7 @@ function renderAll() {
   renderActivity(s.activity || []);
   renderNotifications(s.notifications || []);
   renderRoadmapCard();
+  renderBugs(s);
   renderPromotionQueue(s);
   window.lucide?.createIcons();
 }
@@ -343,54 +344,214 @@ function renderReleases(id, items) {
 }
 
 // ---------- BOARD TAB ----------
+// Six-column workflow, spelled out end-to-end so the user (and any exec
+// reading over their shoulder) never has to guess what a column contains:
+//
+//   Backlog        — feature requests / new ideas / open issues that
+//                    aren't in flight yet.
+//   PR Created     — every open pull request. Was previously mislabelled
+//                    as "Backlog" and mixed with issues.
+//   Development    — features whose linked work is in Development or
+//                    Code Review stage.
+//   Testing        — Testing / UAT features.
+//   Ready For Prod — features approved by QA (readinessScore >= 80) but
+//                    not yet released.
+//   Production     — shipped.
 const COLUMNS = [
-  { key: 'Backlog',     tone: 'backlog', label: 'Backlog' },
-  { key: 'Development', tone: 'dev',     label: 'Development' },
-  { key: 'Testing',     tone: 'test',    label: 'Testing' },
-  { key: 'Production',  tone: 'prod',    label: 'Production' },
+  { key: 'Backlog',      tone: 'backlog',  label: 'Backlog',          empty: 'Nothing waiting to be picked up.' },
+  { key: 'PRCreated',    tone: 'pr',       label: 'PR Created',       empty: 'No open pull requests.' },
+  { key: 'Development',  tone: 'dev',      label: 'Development',      empty: 'Nothing being built right now.' },
+  { key: 'Testing',      tone: 'test',     label: 'Testing',          empty: 'Nothing in QA.' },
+  { key: 'ReadyForProd', tone: 'ready',    label: 'Ready For Prod',   empty: 'Nothing waiting to ship.' },
+  { key: 'Production',   tone: 'prod',     label: 'Production',       empty: 'Nothing shipped yet.' },
 ];
-const COL_DOT = { backlog:'#78716c', dev:'#2563eb', test:'#ea580c', prod:'#059669' };
+const COL_DOT = { backlog:'#78716c', pr:'#8b5cf6', dev:'#2563eb', test:'#ea580c', ready:'#0d9488', prod:'#059669' };
+
+// A GitHub issue is a "bug" if its labels or title look like one. Everything
+// else in the issue list belongs in Backlog. This lets the board show
+// feature requests separately from defects and keeps the dedicated
+// Issues & Bugs section below focused on actual bugs.
+const BUG_LABEL_HINTS = ['bug','defect','regression','crash','error','incident','sev','severity','p0','p1','p2'];
+function isBugLike(issue) {
+  const labels = (issue.labels || []).map(l => String(l).toLowerCase());
+  if (labels.some(l => BUG_LABEL_HINTS.some(k => l.includes(k)))) return true;
+  const title = String(issue.title || '').toLowerCase();
+  return /\b(bug|crash|broken|error|fails?|regression)\b/.test(title);
+}
 
 function renderKanban(features, backlogActivities) {
   state._backlog = backlogActivities || [];
-  const grouped = { Backlog: [], Development: [], Testing: [], Production: [] };
-  for (const f of features) grouped[bucketFor(f)].push(f);
+  const snap = state.snapshot || {};
+  const searchQ = (state.filters.search || '').toLowerCase();
+  const matchesSearch = (str) => !searchQ || String(str || '').toLowerCase().includes(searchQ);
+
+  // Group features by their new destination column. Development split
+  // depends on readinessScore so features "ready to ship" surface in their
+  // own column rather than hiding at the tail of Development.
+  const grouped = { Development: [], Testing: [], ReadyForProd: [], Production: [] };
+  for (const f of features) {
+    if (f.stage === 'Production') { grouped.Production.push(f); continue; }
+    if (['Testing','UAT'].includes(f.stage)) { grouped.Testing.push(f); continue; }
+    if (['Development','Code Review'].includes(f.stage)) {
+      if ((f.readinessScore || 0) >= 80) grouped.ReadyForProd.push(f);
+      else grouped.Development.push(f);
+    }
+  }
+
+  // Backlog = open non-bug issues from GitHub, deduped against in-flight
+  // features. Falls back to backlogActivities when the snapshot has no
+  // issues attached (older snapshots, demo mode).
+  const inFlightKeys = new Set(features.map(f => f.key));
+  const openIssues = (snap.issues || []).filter(i => i.state === 'open' && !isBugLike(i));
+  let backlogRows = openIssues
+    .filter(i => !inFlightKeys.has(`${i.repoFull}:${i.number}`))
+    .map(i => ({
+      kind: 'issue', name: i.title, person: i.author, action: 'Issue opened',
+      when: i.created_at, url: i.url, featureKey: `${i.repoFull}:${i.number}`,
+    }));
+  if (backlogRows.length === 0 && backlogActivities?.length) {
+    // Demo mode / fallback — surface whatever the snapshot's backlogActivities carries.
+    backlogRows = backlogActivities.filter(a => a.action !== 'PR opened' && a.action !== 'PR opened (draft)');
+  }
+
+  // PR Created = every open pull request. Straight from snap.prs so the
+  // card can show real PR metadata (approvals, reviewers, mergeable state).
+  const prRows = (snap.prs || []).filter(p => p.state === 'open').map(p => ({
+    kind: 'pr', name: p.title, person: p.author, action: p.draft ? 'Draft PR' : 'PR open',
+    when: p.updated_at || p.created_at, url: p.url,
+    featureKey: `${p.repoFull}:${p.number}`,
+    number: p.number, repoFull: p.repoFull,
+    approvals: p.approvals || 0,
+    changesRequested: p.changesRequested || 0,
+    reviewers: [...(p.requestedReviewers || []), ...(p.reviewers || [])],
+    mergeable: p.mergeable_state,
+    draft: p.draft,
+  }));
+
+  const columnItems = {
+    Backlog:      backlogRows.filter(a => matchesSearch(a.name)).slice(0, 24),
+    PRCreated:    prRows.filter(a => matchesSearch(a.name)).slice(0, 24),
+    Development:  grouped.Development.sort(byUpdatedDesc).slice(0, 40),
+    Testing:      grouped.Testing.sort(byUpdatedDesc).slice(0, 40),
+    ReadyForProd: grouped.ReadyForProd.sort(byUpdatedDesc).slice(0, 40),
+    Production:   grouped.Production.sort(byUpdatedDesc).slice(0, 40),
+  };
+  state._backlogShown = columnItems.Backlog;
+  state._prShown = columnItems.PRCreated;
+
   const countEl = document.getElementById('board-count');
   if (countEl) countEl.textContent = `${features.length} feature${features.length===1?'':'s'}`;
 
   document.getElementById('kanban').innerHTML = COLUMNS.map(col => {
-    let cards = '';
+    const items = columnItems[col.key];
+    let cards;
     if (col.key === 'Backlog') {
-      const items = (backlogActivities || []).filter(a =>
-        !state.filters.search || a.name.toLowerCase().includes(state.filters.search.toLowerCase())
-      ).slice(0, 12);
-      state._backlogShown = items;
-      cards = items.length === 0 ? emptyState('Nothing waiting.') : items.map((a, i) => stickyBacklog(a, i)).join('');
+      cards = items.length === 0 ? emptyState(col.empty) : items.map((a, i) => stickyBacklog(a, i)).join('');
+    } else if (col.key === 'PRCreated') {
+      cards = items.length === 0 ? emptyState(col.empty) : items.map((p, i) => stickyPR(p, i)).join('');
     } else {
-      const items = grouped[col.key].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 40);
-      cards = items.length === 0 ? emptyState(`No features in ${col.label}.`) : items.map(f => stickyFeature(f, col.tone)).join('');
+      cards = items.length === 0 ? emptyState(col.empty) : items.map(f => stickyFeature(f, col.tone)).join('');
     }
-    const count = col.key === 'Backlog' ? (backlogActivities || []).length : grouped[col.key].length;
     return `
       <div class="kanban-col">
         <div class="kanban-col-head">
           <span class="w-2 h-2 rounded-full" style="background:${COL_DOT[col.tone]}"></span>
           <span class="col-title">${col.label}</span>
-          <span class="col-count">${count}</span>
+          <span class="col-count">${items.length}</span>
         </div>
         <div class="kanban-col-body">${cards}</div>
       </div>`;
   }).join('');
-  document.querySelectorAll('.note[data-key]:not(.backlog)').forEach(el => el.addEventListener('click', () => showFeature(el.dataset.key)));
-  // Backlog rows open the drawer as a rich PR / issue / backlog view (never a
-  // dead click, never "Not found"). We pass the raw activity as a hint so even
-  // items without a resolvable feature key still render a meaningful workspace.
+
+  // Wire clicks: every card opens the same drawer. Feature cards go
+  // straight to showFeature by key; backlog/PR cards use their hint so even
+  // items without a resolvable feature key render a meaningful workspace
+  // (never "Not found").
+  document.querySelectorAll('.note[data-key]:not(.backlog):not(.pr)').forEach(el =>
+    el.addEventListener('click', () => showFeature(el.dataset.key)));
   document.querySelectorAll('.note.backlog[data-bk]').forEach(el => el.addEventListener('click', () => {
     const a = (state._backlogShown || [])[Number(el.dataset.bk)];
     if (!a) return;
     const repoFull = (a.featureKey || '').split(':')[0] || a.repoFull || a.repo || '';
     showFeature(a.featureKey, { name: a.name, url: a.url, person: a.person, when: a.when, repoFull });
   }));
+  document.querySelectorAll('.note.pr[data-pr]').forEach(el => el.addEventListener('click', () => {
+    const p = (state._prShown || [])[Number(el.dataset.pr)];
+    if (!p) return;
+    showFeature(p.featureKey, { name: p.name, url: p.url, person: p.person, when: p.when, repoFull: p.repoFull });
+  }));
+}
+
+function byUpdatedDesc(a, b) { return new Date(b.updated_at) - new Date(a.updated_at); }
+
+// ---------- Issues & Bugs (Board tab, below the kanban) ----------
+// Dedicated defect triage view — deliberately separate from the feature
+// kanban so bug fixes don't visually compete with feature delivery. Sourced
+// from the same snapshot.issues list the Backlog column filters out (the
+// bug-like ones land here instead).
+function severityFor(issue) {
+  const labels = (issue.labels || []).map(l => String(l).toLowerCase());
+  if (labels.some(l => /(sev.?0|p0|critical|blocker)/.test(l))) return 'critical';
+  if (labels.some(l => /(sev.?1|p1|high|urgent)/.test(l))) return 'high';
+  if (labels.some(l => /(sev.?2|p2|medium)/.test(l))) return 'medium';
+  if (labels.some(l => /(sev.?3|p3|low|minor)/.test(l))) return 'low';
+  // Default heuristic — an unlabelled bug is treated as medium so it's
+  // visible but not screaming for attention.
+  return 'medium';
+}
+
+function environmentFor(issue) {
+  const labels = (issue.labels || []).map(l => String(l).toLowerCase());
+  if (labels.some(l => /prod/.test(l))) return 'Production';
+  if (labels.some(l => /staging|uat/.test(l))) return 'UAT';
+  if (labels.some(l => /test|qa/.test(l))) return 'Testing';
+  if (labels.some(l => /dev/.test(l))) return 'Development';
+  return '—';
+}
+
+function renderBugs(s) {
+  const root = document.getElementById('bugs-list');
+  const srcEl = document.getElementById('bugs-source');
+  if (!root) return;
+  const openBugs = (s.issues || []).filter(i => i.state === 'open' && isBugLike(i));
+  const bugs = openBugs
+    .map(i => ({
+      i,
+      severity: severityFor(i),
+      env: environmentFor(i),
+      age: Math.max(0, Math.floor((Date.now() - new Date(i.created_at).getTime()) / 86400_000)),
+    }))
+    .sort((a, b) => {
+      const sevRank = { critical: 0, high: 1, medium: 2, low: 3 };
+      const s1 = sevRank[a.severity] ?? 2, s2 = sevRank[b.severity] ?? 2;
+      if (s1 !== s2) return s1 - s2;
+      return b.age - a.age;                // older first within a severity
+    })
+    .slice(0, 30);
+  if (srcEl) srcEl.textContent = openBugs.length
+    ? `${openBugs.length} open defect${openBugs.length === 1 ? '' : 's'} · sorted by severity, then age`
+    : 'No open defects across your repositories';
+  if (bugs.length === 0) {
+    root.innerHTML = `<div class="col-empty"><div class="text-3xl mb-2">🐞</div><div>No open bugs. Nice.</div></div>`;
+    return;
+  }
+  root.innerHTML = bugs.map(({ i, severity, env, age }) => `
+    <div class="bug-row" data-key="${fmt.escape(i.repoFull)}:${fmt.escape(String(i.number))}">
+      <span class="bug-sev bug-sev-${severity}" title="Severity ${severity}">${severity[0].toUpperCase() + severity.slice(1)}</span>
+      <div class="bug-body">
+        <div class="bug-title">${fmt.escape(i.title)}</div>
+        <div class="bug-meta">
+          <span class="bug-num">#${fmt.escape(String(i.number))}</span>
+          · ${fmt.escape((i.repoFull || '').split('/').pop() || '')}
+          · Reported by ${fmt.escape(niceName(i.author))}
+          ${(i.assignees || []).length ? ` · Assigned to ${fmt.escape(niceName(i.assignees[0]))}` : ' · Unassigned'}
+          · ${age}d old
+          · <span class="bug-env">${fmt.escape(env)}</span>
+        </div>
+      </div>
+      <a class="bug-gh" href="${fmt.escape(i.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open in GitHub</a>
+    </div>`).join('');
+  root.querySelectorAll('.bug-row[data-key]').forEach(el => el.addEventListener('click', () => showFeature(el.dataset.key)));
 }
 
 function emptyState(text) { return `<div class="col-empty"><div class="text-3xl mb-2">🎉</div><div>${fmt.escape(text)}</div></div>`; }
@@ -402,6 +563,34 @@ function stickyBacklog(a, i) {
     <div class="note-title">${fmt.escape(a.name)}</div>
     <div class="note-sub">${fmt.escape(niceName(a.person))} · ${fmt.escape(a.action)}</div>
     <div class="note-meta"><span>${fmt.relative(a.when)}</span></div>
+  </div>`;
+}
+
+function stickyPR(p, i) {
+  // Distinct card style for the "PR Created" column — surfaces the info a
+  // reviewer actually needs at a glance: PR number, repo tail, author,
+  // review state, and whether it's a draft. Approval / changes-requested
+  // pills mirror what GitHub itself shows on the PR list.
+  const repoTail = String(p.repoFull || '').split('/').pop();
+  const reviewers = (p.reviewers || []).slice(0, 3).map(niceName).join(', ');
+  const reviewPill = p.changesRequested > 0
+    ? `<span class="pr-pill changes">Changes requested</span>`
+    : (p.approvals > 0 ? `<span class="pr-pill approved">${p.approvals} approval${p.approvals === 1 ? '' : 's'}</span>`
+                       : `<span class="pr-pill review">Awaiting review</span>`);
+  const draftPill = p.draft ? `<span class="pr-pill draft">Draft</span>` : '';
+  const mergePill = p.mergeable === 'dirty' ? `<span class="pr-pill conflict">Merge conflicts</span>` : '';
+  return `<div class="note pr clickable" title="PR #${fmt.escape(String(p.number))}" data-pr="${i}">
+    <div class="note-title">${fmt.escape(p.name)}</div>
+    <div class="note-sub">
+      <span class="pr-num">#${fmt.escape(String(p.number))}</span>
+      · ${fmt.escape(repoTail)} · ${fmt.escape(niceName(p.person))}
+    </div>
+    <div class="pr-pills">${draftPill}${reviewPill}${mergePill}</div>
+    <div class="note-meta">
+      ${reviewers ? `<span title="Reviewers">👀 ${fmt.escape(reviewers)}</span>` : ''}
+      <span>${fmt.relative(p.when)}</span>
+      <a class="pr-gh" href="${fmt.escape(p.url || '#')}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open in GitHub</a>
+    </div>
   </div>`;
 }
 
@@ -504,7 +693,18 @@ function renderRoadmapCard() {
     items,
     id => {
       const found = items.find(x => x.id === id);
-      if (found?.featureKey) showFeature(found.featureKey);
+      if (!found) return;
+      // Every roadmap card opens the same Feature Drawer used elsewhere.
+      // Linked items resolve to a full featureView (workflow, commits, PRs);
+      // unlinked items fall through to genericView with the roadmap hint so
+      // the user still sees name/owner/quarter/status — never a dead click.
+      const hint = {
+        name:  found.name,
+        person: found.owner,
+        when:  found.startDate || found.endDate,
+        repoFull: found.linkedRepo || '',
+      };
+      showFeature(found.featureKey || `roadmap:${found.id}`, hint);
     },
     async id => {
       // Optimistic — remove from local state so the UI updates instantly,
