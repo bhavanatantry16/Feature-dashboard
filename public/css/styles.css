@@ -84,13 +84,13 @@ body { background: var(--bg); color: var(--ink-900); }
 
 /* ---- Kanban board ---- */
 .kanban-grid {
-  /* Six columns end-to-end: Backlog / PR Created / Development / Testing /
-     Ready For Prod / Production. At <1400px we horizontally scroll rather
-     than crushing card width; below 900px we go card-swipe on mobile. */
-  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* Five columns end-to-end: Feature Requests / PR Created / Development /
+     Testing / Production. At <1200px we horizontally scroll rather than
+     crushing card width; below 900px we go card-swipe on mobile. */
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
 }
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
   .kanban-grid {
     grid-auto-flow: column;
     grid-auto-columns: minmax(240px, 1fr);
@@ -710,10 +710,11 @@ body { background: var(--bg); color: var(--ink-900); }
 .note.clickable:hover { transform: translateY(-2px); box-shadow: var(--card-shadow-hover); }
 
 /* ---- Print / Save-as-PDF ----
-   Fires when the user clicks Download PDF (Overview → window.print()).
-   Hide every chrome element the exec doesn't need in a printed brief:
-   header nav, tab switcher, filters, other tabs, footer, and the modal
-   dialogs. Everything left is the Overview section itself. */
+   Only fires from Overview (the button only shows there). What lands in
+   the printed brief is the exec-oriented content: Needs Attention,
+   Weekly Summary, Recently Released, Upcoming Releases, Notifications.
+   Deliberately excluded: "What happened today" activity feed — too
+   granular for a stakeholder brief, and it dates fast. */
 @media print {
   @page { size: A4; margin: 14mm 12mm; }
   html, body { background: white !important; color: #111 !important; }
@@ -722,9 +723,15 @@ body { background: var(--bg); color: var(--ink-900); }
   .filter-strip, .chip-row { display: none !important; }
   .tab-panel.hidden { display: none !important; }
   .tab-panel { display: block !important; }
-  /* Board and Roadmap tabs never print — Download PDF forces the user onto
-     Overview first, but this is belt & braces if something is left mounted. */
-  #tab-board, #tab-roadmap { display: none !important; }
+  /* Everything except Overview never prints. */
+  #tab-board, #tab-roadmap, #tab-bugs, #tab-team { display: none !important; }
+  /* Inside Overview, drop the day-scoped activity feed + progress bar
+     (they're operational, not narrative) and keep the exec sections. */
+  #today-progress, #activity, .section-head:has(h3:matches("What happened today")) {
+    display: none !important;
+  }
+  /* Fallback for :has() unsupported browsers — hide the Activity wrapper by id. */
+  #activity { display: none !important; }
   /* Neutralise glass/shadow effects that print as muddy grey */
   .glass, .kpi, .summary-card, .activity-card, .chart-card, .roadmap-card {
     background: white !important; box-shadow: none !important;
@@ -732,7 +739,13 @@ body { background: var(--bg); color: var(--ink-900); }
   }
   a[href]::after { content: ''; }              /* don't append URLs to links */
   main { max-width: none !important; padding: 0 !important; }
+  /* Screen-only: PDF button hidden unless we're on Overview. */
 }
+
+/* Screen-only rule: hide the Download PDF button unless the URL fragment
+   points at Overview. Keeps the header cleaner and prevents a user
+   downloading a "PDF" that would render as a blank Board. */
+body:not([data-tab="overview"]) #btn-download-pdf { display: none; }
 
 /* Delete-button on each roadmap card — hidden until hover so it stays quiet. */
 .roadmap-del {
@@ -1185,3 +1198,155 @@ body { background: var(--bg); color: var(--ink-900); }
 }
 .bug-comment-head { font-size: 12px; margin-bottom: 4px; }
 .bug-comment-body { font-size: 13px; color: var(--ink-700); white-space: pre-wrap; }
+
+/* ==========================================================
+   Auth-page polish (round-2 refinement of the login /
+   accept-invite pages). Softer background, refined card, a
+   subtle bottom accent bar for depth, and more breathing room
+   between form rows.
+   ========================================================== */
+
+/* Force light on the auth pages regardless of :root data-theme */
+.login-shell, .login-shell * {
+  --bg: #f5f6fb;
+  --surface: #ffffff;
+  --surface-muted: #f2f4f8;
+  --surface-border: #e5e7ee;
+  --ink-900: #101828;
+  --ink-700: #344054;
+  --ink-500: #667085;
+  --ink-400: #98a2b3;
+}
+.login-shell {
+  background:
+    radial-gradient(1400px 700px at 12% -12%, rgba(99,102,241,.12), transparent 60%),
+    radial-gradient(1200px 600px at 92% 112%, rgba(59,130,246,.10), transparent 60%),
+    linear-gradient(180deg, #f7f8ff 0%, #f5f6fb 100%);
+}
+.login-card {
+  max-width: 440px;
+  padding: 36px 32px 30px;
+  border-radius: 24px;
+  border: 1px solid rgba(226,232,240,.9);
+  box-shadow:
+    0 40px 80px -32px rgba(15,23,42,.24),
+    0 8px 20px -8px rgba(15,23,42,.08),
+    0 1px 0 rgba(255,255,255,.9) inset;
+  position: relative;
+  overflow: hidden;
+}
+.login-card::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: linear-gradient(90deg, #6366f1, #ec4899, #f59e0b);
+}
+.login-brand {
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.login-brand .brand-mark {
+  width: 44px; height: 44px; border-radius: 14px;
+  background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  box-shadow: 0 6px 14px -4px rgba(15,23,42,.35);
+}
+.login-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+.login-sub {
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+.login-form label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-700);
+  letter-spacing: 0.01em;
+  margin-bottom: 14px;
+}
+.login-form input[type="email"],
+.login-form input[type="password"],
+.login-form input[type="text"] {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  font-size: 14px;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+  background: #fbfcfe;
+}
+.login-form input:hover { border-color: #cbd5e1; }
+.login-form input:focus {
+  border-color: #6366f1;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(99,102,241,.14);
+}
+.login-row { margin: 6px 0 20px; }
+.login-check { color: var(--ink-700); font-weight: 500; }
+.login-forgot { font-weight: 500; }
+.login-submit {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  transition: transform .12s ease, box-shadow .12s ease, background .18s;
+  box-shadow: 0 6px 14px -4px rgba(15,23,42,.35);
+}
+.login-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -6px rgba(15,23,42,.45);
+}
+.login-submit:active { transform: translateY(0); }
+.login-divider { margin: 24px 0 18px; }
+.login-divider span { font-weight: 600; color: var(--ink-400); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10.5px; }
+.login-github {
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  border: 1.5px solid #e2e8f0;
+  transition: border-color .12s, background .12s;
+}
+.login-github:hover { border-color: #cbd5e1; background: #fbfcfe; }
+.login-oauth-hint {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(148,163,184,.08);
+  text-align: center;
+  margin-top: 14px;
+}
+.login-error, .login-success {
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 14px;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.login-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.login-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.login-foot {
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--ink-400);
+  text-align: center;
+}
+.login-foot a { color: var(--ink-500); }
+
+/* Set-password page — user identity badge above the form */
+.admin-me {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(236,72,153,.10));
+  border: 1px solid rgba(99,102,241,.22);
+  color: var(--ink-700);
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 18px;
+}

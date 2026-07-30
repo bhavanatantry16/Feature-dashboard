@@ -6,15 +6,17 @@
   <title>Set your password · Feature Tracker</title>
   <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
   <link rel="stylesheet" href="/css/styles.css" />
-  <script>
-    (function () {
-      const s = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (s === 'dark' || (!s && prefersDark)) document.documentElement.classList.add('dark');
-    })();
-  </script>
+  <style>
+    /* .hidden is a Tailwind utility used inline in this file. This page
+       deliberately does NOT load Tailwind (kept lightweight for the
+       login/set-password surface), so we define the one utility we need. */
+    .hidden { display: none !important; }
+  </style>
+  <!-- Deliberately no dark-mode auto-detect on the auth pages — they should
+       always render light so the "Feature Tracker" brand and CTAs stay
+       high-contrast regardless of the user's OS preference. -->
 </head>
-<body class="min-h-full font-sans antialiased text-ink-900 dark:text-slate-100" style="background: var(--bg);">
+<body class="min-h-full font-sans antialiased" style="background: var(--bg); color: var(--ink-900);">
 
   <main class="login-shell">
     <div class="login-card">

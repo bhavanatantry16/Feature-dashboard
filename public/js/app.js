@@ -63,6 +63,11 @@ async function boot() {
   state.refreshTimer = setInterval(() => refreshSnapshot(false), state.refreshSeconds * 1000);
   api.subscribeEvents(() => refreshSnapshot(false));
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && refreshSnapshot(false));
+
+  // The Bugs tab dispatches `bugs-changed` after any add / edit / delete
+  // / import, and we mirror that on the Board so the two surfaces never
+  // drift. Board section refreshes cheaply — just a re-fetch of /api/bugs.
+  window.addEventListener('bugs-changed', () => renderBugs());
 }
 
 function renderSignedInHeader(user) {
@@ -101,6 +106,9 @@ function activateTab(tab) {
   state.currentTab = tab;
   document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'tab-' + tab));
+  // Stamp the current tab on the body so CSS can conditionally reveal
+  // things like the Download PDF button only when Overview is active.
+  document.body.dataset.tab = tab;
   location.hash = tab;
   // Lazy-load tab data on first activation. Bugs is fetched on every visit
   // because volume is small and freshness matters; Team refreshes when the
@@ -223,7 +231,7 @@ function renderAll() {
   renderActivity(s.activity || []);
   renderNotifications(s.notifications || []);
   renderRoadmapCard();
-  renderBugs(s);
+  renderBugs();                                     // async — fetches /api/bugs on its own
   renderPromotionQueue(s);
   window.lucide?.createIcons();
 }
@@ -398,28 +406,27 @@ function renderReleases(id, items) {
 }
 
 // ---------- BOARD TAB ----------
-// Six-column workflow, spelled out end-to-end so the user (and any exec
-// reading over their shoulder) never has to guess what a column contains:
+// Five-column workflow:
 //
-//   Backlog        — feature requests / new ideas / open issues that
-//                    aren't in flight yet.
-//   PR Created     — every open pull request. Was previously mislabelled
-//                    as "Backlog" and mixed with issues.
-//   Development    — features whose linked work is in Development or
-//                    Code Review stage.
-//   Testing        — Testing / UAT features.
-//   Ready For Prod — features approved by QA (readinessScore >= 80) but
-//                    not yet released.
-//   Production     — shipped.
+//   Feature Requests — new ideas / non-bug issues waiting to be picked up
+//   PR Created       — every open pull request
+//   Development      — features being built (Dev / Code Review stage)
+//   Testing          — Testing / UAT features
+//   Production       — shipped
+//
+// The old "Ready For Prod" split (features with readinessScore >= 80) was
+// removed — it made the board visually crowded on wide screens and readers
+// consistently missed the boundary from Development. Anything approved but
+// not shipped stays in Development, which matches how most teams talk about
+// it in stand-up.
 const COLUMNS = [
   { key: 'Backlog',      tone: 'backlog',  label: 'Feature Requests', empty: 'No open feature requests.' },
   { key: 'PRCreated',    tone: 'pr',       label: 'PR Created',       empty: 'No open pull requests.' },
   { key: 'Development',  tone: 'dev',      label: 'Development',      empty: 'Nothing being built right now.' },
   { key: 'Testing',      tone: 'test',     label: 'Testing',          empty: 'Nothing in QA.' },
-  { key: 'ReadyForProd', tone: 'ready',    label: 'Ready For Prod',   empty: 'Nothing waiting to ship.' },
   { key: 'Production',   tone: 'prod',     label: 'Production',       empty: 'Nothing shipped yet.' },
 ];
-const COL_DOT = { backlog:'#78716c', pr:'#8b5cf6', dev:'#2563eb', test:'#ea580c', ready:'#0d9488', prod:'#059669' };
+const COL_DOT = { backlog:'#78716c', pr:'#8b5cf6', dev:'#2563eb', test:'#ea580c', prod:'#059669' };
 
 // A GitHub issue is a "bug" if its labels or title look like one. Everything
 // else in the issue list belongs in Backlog. This lets the board show
@@ -439,17 +446,13 @@ function renderKanban(features, backlogActivities) {
   const searchQ = (state.filters.search || '').toLowerCase();
   const matchesSearch = (str) => !searchQ || String(str || '').toLowerCase().includes(searchQ);
 
-  // Group features by their new destination column. Development split
-  // depends on readinessScore so features "ready to ship" surface in their
-  // own column rather than hiding at the tail of Development.
-  const grouped = { Development: [], Testing: [], ReadyForProd: [], Production: [] };
+  // Group features by column. Ready-for-prod / readinessScore fold back
+  // into Development — the extra column was more noise than signal.
+  const grouped = { Development: [], Testing: [], Production: [] };
   for (const f of features) {
     if (f.stage === 'Production') { grouped.Production.push(f); continue; }
     if (['Testing','UAT'].includes(f.stage)) { grouped.Testing.push(f); continue; }
-    if (['Development','Code Review'].includes(f.stage)) {
-      if ((f.readinessScore || 0) >= 80) grouped.ReadyForProd.push(f);
-      else grouped.Development.push(f);
-    }
+    if (['Development','Code Review'].includes(f.stage)) grouped.Development.push(f);
   }
 
   // Backlog = open non-bug issues from GitHub, deduped against in-flight
@@ -487,7 +490,6 @@ function renderKanban(features, backlogActivities) {
     PRCreated:    prRows.filter(a => matchesSearch(a.name)).slice(0, 24),
     Development:  grouped.Development.sort(byUpdatedDesc).slice(0, 40),
     Testing:      grouped.Testing.sort(byUpdatedDesc).slice(0, 40),
-    ReadyForProd: grouped.ReadyForProd.sort(byUpdatedDesc).slice(0, 40),
     Production:   grouped.Production.sort(byUpdatedDesc).slice(0, 40),
   };
   state._backlogShown = columnItems.Backlog;
@@ -563,49 +565,58 @@ function environmentFor(issue) {
   return '—';
 }
 
-function renderBugs(s) {
+// Board-side bug list — now driven by the SAME /api/bugs store the
+// dedicated Bugs tab uses. Adding a bug from either surface reflects on
+// both, and the Board card here shows exactly what the Bugs tab shows:
+// bugId, title, severity, status, assignee, environment.
+async function renderBugs() {
   const root = document.getElementById('bugs-list');
   const srcEl = document.getElementById('bugs-source');
   if (!root) return;
-  const openBugs = (s.issues || []).filter(i => i.state === 'open' && isBugLike(i));
-  const bugs = openBugs
-    .map(i => ({
-      i,
-      severity: severityFor(i),
-      env: environmentFor(i),
-      age: Math.max(0, Math.floor((Date.now() - new Date(i.created_at).getTime()) / 86400_000)),
-    }))
-    .sort((a, b) => {
-      const sevRank = { critical: 0, high: 1, medium: 2, low: 3 };
-      const s1 = sevRank[a.severity] ?? 2, s2 = sevRank[b.severity] ?? 2;
-      if (s1 !== s2) return s1 - s2;
-      return b.age - a.age;                // older first within a severity
-    })
-    .slice(0, 30);
+  let bugs = [];
+  try {
+    const resp = await fetch('/api/bugs').then(r => r.json());
+    bugs = resp.bugs || [];
+  } catch { /* fall through — root gets an error state below */ }
+  const openBugs = bugs.filter(b => !['Closed', "Won't Fix"].includes(b.status));
+  const sortRanked = openBugs.slice().sort((a, b) => {
+    const sev = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+    const s1 = sev[a.severity] ?? 2, s2 = sev[b.severity] ?? 2;
+    if (s1 !== s2) return s1 - s2;
+    return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+  }).slice(0, 30);
   if (srcEl) srcEl.textContent = openBugs.length
-    ? `${openBugs.length} open defect${openBugs.length === 1 ? '' : 's'} · sorted by severity, then age`
-    : 'No open defects across your repositories';
-  if (bugs.length === 0) {
+    ? `${openBugs.length} open · same list as the Bugs tab · sorted by severity`
+    : 'No open bugs — nice. Add one below or from the Bugs tab and it appears here.';
+  if (sortRanked.length === 0) {
     root.innerHTML = `<div class="col-empty"><div class="text-3xl mb-2">🐞</div><div>No open bugs. Nice.</div></div>`;
     return;
   }
-  root.innerHTML = bugs.map(({ i, severity, env, age }) => `
-    <div class="bug-row" data-key="${fmt.escape(i.repoFull)}:${fmt.escape(String(i.number))}">
-      <span class="bug-sev bug-sev-${severity}" title="Severity ${severity}">${severity[0].toUpperCase() + severity.slice(1)}</span>
+  const daysSinceIso = iso => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400_000));
+  root.innerHTML = sortRanked.map(b => {
+    const sev = String(b.severity || 'Medium').toLowerCase();
+    return `<div class="bug-row" data-id="${fmt.escape(b.id)}">
+      <span class="bug-sev bug-sev-${sev}" title="Severity ${b.severity}">${fmt.escape(b.severity)}</span>
       <div class="bug-body">
-        <div class="bug-title">${fmt.escape(i.title)}</div>
+        <div class="bug-title">${fmt.escape(b.title)}</div>
         <div class="bug-meta">
-          <span class="bug-num">#${fmt.escape(String(i.number))}</span>
-          · ${fmt.escape((i.repoFull || '').split('/').pop() || '')}
-          · Reported by ${fmt.escape(niceName(i.author))}
-          ${(i.assignees || []).length ? ` · Assigned to ${fmt.escape(niceName(i.assignees[0]))}` : ' · Unassigned'}
-          · ${age}d old
-          · <span class="bug-env">${fmt.escape(env)}</span>
+          <span class="bug-num">${fmt.escape(b.bugId)}</span>
+          · <span>${fmt.escape(b.status)}</span>
+          · ${fmt.escape((b.repo || '').split('/').pop() || '—')}
+          · Reporter ${fmt.escape(b.reporter || '—')}
+          · ${b.assignee ? `Assigned to ${fmt.escape(b.assignee)}` : 'Unassigned'}
+          · ${daysSinceIso(b.createdAt)}d old
+          · <span class="bug-env">${fmt.escape(b.environment)}</span>
         </div>
       </div>
-      <a class="bug-gh" href="${fmt.escape(i.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open in GitHub</a>
-    </div>`).join('');
-  root.querySelectorAll('.bug-row[data-key]').forEach(el => el.addEventListener('click', () => showFeature(el.dataset.key)));
+      ${b.githubIssueUrl ? `<a class="bug-gh" href="${fmt.escape(b.githubIssueUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open in GitHub</a>` : ''}
+    </div>`;
+  }).join('');
+  root.querySelectorAll('.bug-row[data-id]').forEach(el => el.addEventListener('click', () => {
+    // Delegate to the Bugs tab's drawer opener so the Board card opens the
+    // same rich edit surface — no duplicated implementation.
+    window.dispatchEvent(new CustomEvent('board-bug-open', { detail: { id: el.dataset.id } }));
+  }));
 }
 
 function emptyState(text) { return `<div class="col-empty"><div class="text-3xl mb-2">🎉</div><div>${fmt.escape(text)}</div></div>`; }

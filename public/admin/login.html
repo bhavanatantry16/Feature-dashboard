@@ -6,17 +6,15 @@
   <title>Sign in · Feature Tracker</title>
   <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
   <link rel="stylesheet" href="/css/styles.css" />
-  <script>
-    // Same dark-mode bootstrap as the main app so the login page respects
-    // the user's saved preference without a flash of the wrong theme.
-    (function () {
-      const s = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (s === 'dark' || (!s && prefersDark)) document.documentElement.classList.add('dark');
-    })();
-  </script>
+  <style>
+    /* .hidden used inline; this page doesn't load Tailwind. */
+    .hidden { display: none !important; }
+  </style>
+  <!-- Deliberately no dark-mode auto-detect — the sign-in surface always
+       renders light so the brand mark and CTAs stay high-contrast
+       regardless of the visitor's OS preference. -->
 </head>
-<body class="min-h-full font-sans antialiased text-ink-900 dark:text-slate-100" style="background: var(--bg);">
+<body class="min-h-full font-sans antialiased" style="background: var(--bg); color: var(--ink-900);">
 
   <main class="login-shell">
     <div class="login-card">
