@@ -4,7 +4,7 @@
     {
       "name": "engineering-intelligence",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "C:/Users/user/github-engineering-intelligence", "run", "dev"],
+      "runtimeArgs": ["run", "dev"],
       "port": 8788
     }
   ]

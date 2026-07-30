@@ -297,16 +297,28 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
     </div>
   </div>
 
-  <!-- ==== Drawer ==== -->
-  <div id="drawer" class="fixed inset-0 z-40 hidden">
-    <div class="absolute inset-0 bg-slate-900/40" data-drawer-close></div>
-    <aside class="absolute right-0 top-0 h-full w-full sm:w-[440px] bg-white dark:bg-slate-900 shadow-xl overflow-y-auto animate-slide-in">
-      <div class="drawer-head">
+  <!-- ==== Feature Intelligence Drawer ==== -->
+  <div id="drawer" class="drawer-root hidden" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div class="drawer-backdrop" data-drawer-close></div>
+    <aside id="drawer-panel" class="drawer-panel" role="document" aria-label="Feature details">
+      <header class="drawer-head">
+        <button id="drawer-back" class="drawer-back hidden" aria-label="Back"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
         <span id="drawer-swatch" class="drawer-swatch"></span>
-        <div class="font-semibold text-sm truncate flex-1" id="drawer-title">Feature</div>
-        <button class="icon-btn" data-drawer-close><i data-lucide="x" class="w-4 h-4"></i></button>
+        <div class="drawer-head-titles">
+          <div id="drawer-kicker" class="drawer-kicker"></div>
+          <div id="drawer-title" class="drawer-title">Feature</div>
+        </div>
+        <div class="drawer-head-actions">
+          <button id="drawer-search-toggle" class="drawer-hbtn" aria-label="Search inside" title="Search inside"><i data-lucide="search" class="w-4 h-4"></i></button>
+          <button class="drawer-hbtn" data-drawer-close aria-label="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+      </header>
+      <div id="drawer-searchbar" class="drawer-searchbar hidden">
+        <i data-lucide="search" class="w-4 h-4 text-ink-400"></i>
+        <input id="drawer-search" type="text" placeholder="Search commits, PRs, files, people…" aria-label="Search inside drawer" />
       </div>
-      <div id="drawer-body" class="p-5 space-y-5 text-sm"></div>
+      <div id="drawer-body" class="drawer-body"></div>
+      <footer id="drawer-foot" class="drawer-foot hidden"></footer>
     </aside>
   </div>
 
