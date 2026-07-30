@@ -520,13 +520,17 @@ async function fetchRepo(repo) {
     const changesRequested = reviews.filter(r => r.state === 'CHANGES_REQUESTED').length;
     return {
       id: p.id, number: p.number, title: p.title,
+      body: p.body || '',
       state: p.state, draft: p.draft,
       author: p.user?.login, authorAvatar: p.user?.avatar_url,
       created_at: p.created_at, updated_at: p.updated_at, closed_at: p.closed_at, merged_at: p.merged_at,
       base: p.base?.ref, head: p.head?.ref,
+      merge_commit_sha: p.merge_commit_sha,
+      mergedBy: p.merged_by?.login || null,
       mergeable_state: p.mergeable_state,
       requestedReviewers: (p.requested_reviewers || []).map(u => u.login),
       reviewers: (p.assignees || []).map(u => u.login),
+      reviewApprovers: reviews.filter(r => r.state === 'APPROVED').map(r => r.user?.login).filter(Boolean),
       labels: (p.labels || []).map(l => l.name),
       firstReviewAt, approvals, changesRequested,
       comments: p.review_comments,
@@ -564,9 +568,11 @@ async function fetchRepo(repo) {
 
   const issues = issuesRaw.filter(i => !i.pull_request).map(i => ({
     id: i.id, number: i.number, title: i.title,
-    state: i.state, author: i.user?.login,
+    body: i.body || '',
+    state: i.state, author: i.user?.login, authorAvatar: i.user?.avatar_url,
     assignees: (i.assignees || []).map(u => u.login),
     labels: (i.labels || []).map(l => l.name),
+    comments: i.comments,
     milestone: i.milestone?.title, created_at: i.created_at, closed_at: i.closed_at, updated_at: i.updated_at,
     url: i.html_url, repo: name, repoFull: full,
   }));
@@ -634,9 +640,11 @@ function buildFeatureRegistry({ issues, prs, commits, deployments, releases }) {
     const key = `${i.repoFull}:${i.number}`;
     byKey.set(key, {
       key, id: i.number, repoFull: i.repoFull, title: i.title,
-      owner: i.author, developers: [...i.assignees],
+      description: i.body || '', body: i.body || '',
+      owner: i.author, ownerAvatar: i.authorAvatar, developers: [...i.assignees], assignees: [...i.assignees],
       labels: i.labels, milestone: i.milestone,
       state: i.state, created_at: i.created_at, updated_at: i.updated_at, closed_at: i.closed_at,
+      commentsCount: i.comments || 0,
       url: i.url,
       prs: [], commits: [], deployments: [], releases: [],
     });

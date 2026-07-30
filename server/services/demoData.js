@@ -54,7 +54,7 @@ const commits = Array.from({ length: 220 }).map((_, i) => {
     message: `${kind}: ${feat.toLowerCase()} — #${issue}`,
     author: dev, authorAvatar: AVATARS[dev],
     date: isoAgo(rInt(1, 60 * 24 * 21)),
-    url: '#', repo, repoFull: `${OWNER}/${repo}`,
+    url: `https://github.com/${OWNER}/${repo}/commit/${sha()}`, repo, repoFull: `${OWNER}/${repo}`,
     parents: 1, issues: [issue],
   };
 }).sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -76,24 +76,29 @@ const prs = Array.from({ length: 40 }).map((_, i) => {
   const state = pick(states, i);
   const merged = state === 'closed' && rand() > 0.2 ? isoAgo(rInt(30, 60 * 24 * 5)) : null;
   const created = isoAgo(rInt(60, 60 * 24 * 10));
+  const feat = pick(FEATURES, i);
   return {
     id: 30000 + i, number: 200 + i,
-    title: `${pick(['feat','fix','chore'], i)}: ${pick(FEATURES, i)} — closes #${issue}`,
+    title: `${pick(['feat','fix','chore'], i)}: ${feat} — closes #${issue}`,
+    body: `Implements **${feat}**.\n\nCloses #${issue}\n\n### What changed\n- Wired up the core logic\n- Added unit + integration tests\n- Updated the client to consume the new endpoint\n\n### Checklist\n- [x] Tests added\n- [x] Self-review done\n- [ ] Docs updated`,
     state, draft: i % 11 === 0,
     author: dev, authorAvatar: AVATARS[dev],
     created_at: created, updated_at: isoAgo(rInt(10, 60 * 24 * 3)),
     closed_at: state === 'closed' ? isoAgo(rInt(10, 60 * 24 * 4)) : null,
     merged_at: merged,
     base: 'main', head: pick(BRANCHES.filter(b => b !== 'main'), i),
+    merge_commit_sha: merged ? sha() : null,
+    mergedBy: merged ? pick(DEVS, i + 4) : null,
     mergeable_state: i % 7 === 0 ? 'dirty' : 'clean',
     requestedReviewers: [pick(DEVS, i + 2), pick(DEVS, i + 3)],
     reviewers: [pick(DEVS, i + 4)],
+    reviewApprovers: rInt(0, 3) > 0 ? [pick(DEVS, i + 4)] : [],
     labels: rand() > 0.5 ? ['enhancement'] : ['bug'],
     firstReviewAt: rand() > 0.4 ? isoAgo(rInt(30, 60 * 24 * 2)) : null,
     approvals: rInt(0, 3), changesRequested: i % 8 === 0 ? 1 : 0,
     comments: rInt(0, 15),
     additions: rInt(20, 900), deletions: rInt(5, 300), changed_files: rInt(1, 25),
-    url: '#', repo, repoFull: `${OWNER}/${repo}`,
+    url: `https://github.com/${OWNER}/${repo}/pull/${200 + i}`, repo, repoFull: `${OWNER}/${repo}`,
     issues: [issue],
   };
 });
@@ -123,9 +128,10 @@ const releases = Array.from({ length: 20 }).map((_, i) => {
   return {
     id: 50000 + i, name: `v2026.${11 + Math.floor(i / 4)}.${i}`, tag_name: `v2026.${11 + Math.floor(i / 4)}.${i}`,
     author: dev, published_at: isoAgo(rInt(60, 60 * 24 * 30)), created_at: isoAgo(rInt(60, 60 * 24 * 30)),
-    body: `Release notes for ${repo}\n- ${pick(FEATURES, i)}\n- ${pick(FEATURES, i + 3)}`,
+    body: `## What's new in ${repo}\n- ${pick(FEATURES, i)}\n- ${pick(FEATURES, i + 3)}\n\n## Fixes\n- Assorted bug fixes and performance improvements`,
     prerelease: i % 6 === 0, draft: false,
-    repo, repoFull: `${OWNER}/${repo}`, url: '#',
+    repo, repoFull: `${OWNER}/${repo}`,
+    url: `https://github.com/${OWNER}/${repo}/releases/tag/v2026.${11 + Math.floor(i / 4)}.${i}`,
   };
 });
 
@@ -140,7 +146,7 @@ const workflowRuns = Array.from({ length: 60 }).map((_, i) => {
     status, conclusion, branch: pick(BRANCHES, i),
     actor: dev, actorAvatar: AVATARS[dev], created_at: created, updated_at: created,
     duration: status === 'completed' ? rInt(30_000, 900_000) : null,
-    url: '#', repo, repoFull: `${OWNER}/${repo}`,
+    url: `https://github.com/${OWNER}/${repo}/actions/runs/${60000 + i}`, repo, repoFull: `${OWNER}/${repo}`,
   };
 });
 
@@ -148,15 +154,31 @@ const issues = Array.from({ length: 60 }).map((_, i) => {
   const repo = pick(REPOS, i).name;
   const dev = pick(DEVS, i);
   const feat = pick(FEATURES, i);
+  const done = rand() > 0.5;
+  const body = `## Summary
+Deliver **${feat}** end-to-end so customers can rely on it in production.
+
+This work spans the API, the client, and the supporting infrastructure. It is tracked as part of the current sprint and gates the next release.
+
+## Acceptance Criteria
+- [x] Design reviewed and signed off
+- [x] Core implementation complete
+- [${done ? 'x' : ' '}] Automated tests passing in CI
+- [${done ? 'x' : ' '}] Security & performance review
+- [ ] Documentation updated
+- [ ] Rolled out to production behind a flag`;
   return {
     id: 70000 + i, number: 1000 + i, title: feat,
+    body,
     state: rand() > 0.4 ? 'open' : 'closed', author: pick(DEVS, i + 1),
+    authorAvatar: AVATARS[pick(DEVS, i + 1)],
     assignees: [dev], labels: ['epic', pick(['front-end', 'back-end', 'infra'], i)],
+    comments: rInt(0, 12),
     milestone: pick(['Sprint 42', 'Sprint 43', 'Sprint 44'], i),
     created_at: isoAgo(rInt(60, 60 * 24 * 40)),
     closed_at: rand() > 0.4 ? null : isoAgo(rInt(30, 60 * 24 * 20)),
     updated_at: isoAgo(rInt(30, 60 * 24 * 5)),
-    url: '#', repo, repoFull: `${OWNER}/${repo}`,
+    url: `https://github.com/${OWNER}/${repo}/issues/${1000 + i}`, repo, repoFull: `${OWNER}/${repo}`,
   };
 });
 
@@ -194,8 +216,11 @@ const features = issues.map((i, idx) => {
   const risk = pick(['Low', 'Low', 'Low', 'Medium', 'Medium', 'High'], idx);
   return {
     key: `${i.repoFull}:${i.number}`, id: i.number, repoFull: i.repoFull, title: i.title,
-    owner: i.author, developers: [...new Set([...i.assignees, ...relatedPrs.map(p => p.author), ...relatedCommits.map(c => c.author)])],
-    labels: i.labels, milestone: i.milestone, state: i.state,
+    description: i.body, body: i.body,
+    owner: i.author, ownerAvatar: i.authorAvatar,
+    developers: [...new Set([...i.assignees, ...relatedPrs.map(p => p.author), ...relatedCommits.map(c => c.author)])],
+    assignees: [...i.assignees],
+    labels: i.labels, milestone: i.milestone, state: i.state, commentsCount: i.comments,
     created_at: i.created_at, updated_at: i.updated_at, closed_at: i.closed_at, url: i.url,
     prs: relatedPrs, commits: relatedCommits, deployments: relatedDeps, releases: [],
     currentEnvironment: stage === 'Production' ? 'Production' : (stage === 'UAT' ? 'UAT' : (stage === 'Testing' ? 'Test' : 'Development')),
