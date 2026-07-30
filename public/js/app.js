@@ -1,6 +1,6 @@
 import { api } from './api.js';
 import { fmt, avatar, humanize, niceName, actionLabel, debounce, statusToneKey } from './utils.js';
-import { showFeature } from './drawer.js';
+import { showFeature, setSnapshot } from './drawer.js';
 import { renderRoadmap, openImport, closeImport } from './roadmap.js';
 
 const state = {
@@ -62,6 +62,7 @@ async function refreshSnapshot(force) {
     if (force) await api.refresh();
     const s = await api.snapshot();
     state.snapshot = s;
+    setSnapshot(s);
     document.getElementById('scope-label').textContent = (s.scope || []).join(', ') || '—';
     document.getElementById('demo-banner').classList.toggle('hidden', !s.isDemo);
     updateLastSynced(s.generatedAt);
@@ -351,6 +352,7 @@ const COLUMNS = [
 const COL_DOT = { backlog:'#78716c', dev:'#2563eb', test:'#ea580c', prod:'#059669' };
 
 function renderKanban(features, backlogActivities) {
+  state._backlog = backlogActivities || [];
   const grouped = { Backlog: [], Development: [], Testing: [], Production: [] };
   for (const f of features) grouped[bucketFor(f)].push(f);
   const countEl = document.getElementById('board-count');
@@ -362,7 +364,8 @@ function renderKanban(features, backlogActivities) {
       const items = (backlogActivities || []).filter(a =>
         !state.filters.search || a.name.toLowerCase().includes(state.filters.search.toLowerCase())
       ).slice(0, 12);
-      cards = items.length === 0 ? emptyState('Nothing waiting.') : items.map(stickyBacklog).join('');
+      state._backlogShown = items;
+      cards = items.length === 0 ? emptyState('Nothing waiting.') : items.map((a, i) => stickyBacklog(a, i)).join('');
     } else {
       const items = grouped[col.key].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 40);
       cards = items.length === 0 ? emptyState(`No features in ${col.label}.`) : items.map(f => stickyFeature(f, col.tone)).join('');
@@ -378,26 +381,24 @@ function renderKanban(features, backlogActivities) {
         <div class="kanban-col-body">${cards}</div>
       </div>`;
   }).join('');
-  document.querySelectorAll('.note[data-key]').forEach(el => el.addEventListener('click', () => showFeature(el.dataset.key)));
-  // Backlog rows carry data-href (real PR/issue URL) instead of / in addition
-  // to data-key. Open in a new tab so the dashboard stays put.
-  document.querySelectorAll('.note.backlog[data-href]').forEach(el => el.addEventListener('click', () => {
-    if (el.dataset.key) return; // data-key handler above already fired
-    window.open(el.dataset.href, '_blank', 'noopener');
+  document.querySelectorAll('.note[data-key]:not(.backlog)').forEach(el => el.addEventListener('click', () => showFeature(el.dataset.key)));
+  // Backlog rows open the drawer as a rich PR / issue / backlog view (never a
+  // dead click, never "Not found"). We pass the raw activity as a hint so even
+  // items without a resolvable feature key still render a meaningful workspace.
+  document.querySelectorAll('.note.backlog[data-bk]').forEach(el => el.addEventListener('click', () => {
+    const a = (state._backlogShown || [])[Number(el.dataset.bk)];
+    if (!a) return;
+    const repoFull = (a.featureKey || '').split(':')[0] || a.repoFull || a.repo || '';
+    showFeature(a.featureKey, { name: a.name, url: a.url, person: a.person, when: a.when, repoFull });
   }));
 }
 
 function emptyState(text) { return `<div class="col-empty"><div class="text-3xl mb-2">🎉</div><div>${fmt.escape(text)}</div></div>`; }
 
-function stickyBacklog(a) {
-  // Click behaviour: prefer opening the PR/issue on GitHub when we have a
-  // link (real snapshots include `a.url`); fall back to the feature drawer
-  // when a matching feature key exists (mostly demo data / older backlog
-  // rows). Silent no-op if neither is set — better than a dead click.
-  const href = a.url ? ` data-href="${fmt.escape(a.url)}"` : '';
-  const featureKey = a.featureKey ? ` data-key="${fmt.escape(a.featureKey)}"` : '';
-  const clickable = a.url || a.featureKey ? ' clickable' : '';
-  return `<div class="note backlog${clickable}" title="${fmt.escape(a.action)}"${href}${featureKey}>
+function stickyBacklog(a, i) {
+  // Every backlog card opens the Feature Intelligence Drawer — resolving to a
+  // PR, issue or synthesized backlog workspace. Always clickable.
+  return `<div class="note backlog clickable" title="${fmt.escape(a.action)}" data-bk="${i}">
     <div class="note-title">${fmt.escape(a.name)}</div>
     <div class="note-sub">${fmt.escape(niceName(a.person))} · ${fmt.escape(a.action)}</div>
     <div class="note-meta"><span>${fmt.relative(a.when)}</span></div>
