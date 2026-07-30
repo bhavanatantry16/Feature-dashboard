@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const SETTINGS_FILE = path.join(__dirname, '..', '.settings.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..');
+const SETTINGS_FILE = path.join(DATA_DIR, '.settings.json');
 
 function parseList(raw) {
   if (Array.isArray(raw)) return raw.map(s => String(s).trim()).filter(Boolean);

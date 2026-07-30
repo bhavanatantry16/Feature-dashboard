@@ -28,7 +28,11 @@ import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FILE = path.join(__dirname, '..', '..', '.users.json');
+// DATA_DIR lets tests (and containerised deployments) redirect flat-file
+// state to a scratch folder. Default is the repo root — production
+// behaviour unchanged.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..');
+const FILE = path.join(DATA_DIR, '.users.json');
 const BCRYPT_COST = 12;
 
 export const ROLES = [

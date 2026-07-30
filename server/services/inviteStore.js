@@ -12,7 +12,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FILE = path.join(__dirname, '..', '..', '.invites.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..');
+const FILE = path.join(DATA_DIR, '.invites.json');
 
 const INVITE_TTL_DAYS = 7;
 const RESET_TTL_HOURS = 1;
