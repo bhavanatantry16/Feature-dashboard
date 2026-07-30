@@ -179,6 +179,7 @@
           <p class="text-sm text-ink-500">Quarterly plan. Statuses update automatically as work moves in GitHub.</p>
         </div>
         <div class="flex gap-2">
+          <button id="btn-roadmap-add"    class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add feature</button>
           <button id="btn-roadmap-import" class="btn-secondary text-xs"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Import CSV / JSON</button>
           <button id="btn-roadmap-seed"   class="btn-secondary text-xs"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i>Load sample plan</button>
         </div>
@@ -220,6 +221,55 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
         <div class="ml-auto flex gap-2">
           <button class="btn-secondary" data-import-close>Cancel</button>
           <button id="btn-import-save" class="btn-primary">Import</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==== Add feature dialog ==== -->
+  <div id="add-dialog" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/40" data-add-close></div>
+    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="font-semibold" id="add-dialog-title">Add roadmap feature</div>
+          <div class="text-xs text-ink-500">Appears immediately on the roadmap and persists across restarts.</div>
+        </div>
+        <button class="icon-btn" data-add-close><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="grid grid-cols-1 gap-3">
+        <label class="text-xs text-ink-500">Feature name
+          <input id="add-name" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="e.g. Passwordless sign-in" />
+        </label>
+        <label class="text-xs text-ink-500">Short description <span class="text-ink-400">(optional)</span>
+          <input id="add-desc" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="One line — what's the outcome?" />
+        </label>
+        <div class="grid grid-cols-3 gap-2">
+          <label class="text-xs text-ink-500 col-span-1">Quarter
+            <select id="add-quarter" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm">
+              <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
+            </select>
+          </label>
+          <label class="text-xs text-ink-500 col-span-2">Status
+            <select id="add-status" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm">
+              <option>Not Started</option>
+              <option>Development</option>
+              <option>Testing</option>
+              <option>Production</option>
+              <option>Blocked</option>
+              <option>Waiting</option>
+            </select>
+          </label>
+        </div>
+        <label class="text-xs text-ink-500">Owner <span class="text-ink-400">(GitHub login or name)</span>
+          <input id="add-owner" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="e.g. anika-r" />
+        </label>
+      </div>
+      <div class="mt-4 flex items-center gap-2">
+        <div id="add-error" class="text-xs text-rose-600"></div>
+        <div class="ml-auto flex gap-2">
+          <button class="btn-secondary" data-add-close>Cancel</button>
+          <button id="btn-add-save" class="btn-primary">Add to roadmap</button>
         </div>
       </div>
     </div>

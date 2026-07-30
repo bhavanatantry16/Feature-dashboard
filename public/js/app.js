@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { fmt, avatar, humanize, niceName, actionLabel, debounce, statusToneKey } from './utils.js';
 import { showFeature, setSnapshot } from './drawer.js';
-import { renderRoadmap, openImport, closeImport } from './roadmap.js';
+import { renderRoadmap, openImport, closeImport, openAddFeature, closeAddFeature } from './roadmap.js';
 
 const state = {
   snapshot: null,
@@ -500,10 +500,24 @@ function renderRoadmapCard() {
     const match = featureIndex.get(normalize(it.name));
     return match ? { ...it, liveStatus: matchStage(match), matched: true, featureKey: match.key } : { ...it, matched: false };
   });
-  renderRoadmap(items, id => {
-    const found = items.find(x => x.id === id);
-    if (found?.featureKey) showFeature(found.featureKey);
-  });
+  renderRoadmap(
+    items,
+    id => {
+      const found = items.find(x => x.id === id);
+      if (found?.featureKey) showFeature(found.featureKey);
+    },
+    async id => {
+      // Optimistic — remove from local state so the UI updates instantly,
+      // then persist. If the DELETE fails, fall back to a fresh fetch so
+      // we don't leave the UI out of sync with the file on disk.
+      state.roadmap = (state.roadmap || []).filter(i => i.id !== id);
+      renderRoadmapCard();
+      try {
+        const r = await fetch(`/api/roadmap/item/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error('delete failed');
+      } catch { await refreshRoadmap(); }
+    },
+  );
 }
 function matchStage(f) {
   if (f.stage === 'Production') return 'Production';
@@ -516,6 +530,28 @@ function normalize(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+
 // ---------- Roadmap buttons ----------
 function setupRoadmapButtons() {
   document.getElementById('btn-roadmap-import').addEventListener('click', () => openImport());
+  document.getElementById('btn-roadmap-add')?.addEventListener('click', () => openAddFeature());
+  document.getElementById('btn-add-save')?.addEventListener('click', async () => {
+    const name = document.getElementById('add-name').value.trim();
+    const err = document.getElementById('add-error');
+    if (!name) { err.textContent = 'Give the feature a name.'; return; }
+    const body = {
+      name,
+      description: document.getElementById('add-desc').value.trim(),
+      quarter:     document.getElementById('add-quarter').value,
+      status:      document.getElementById('add-status').value,
+      owner:       document.getElementById('add-owner').value.trim(),
+    };
+    err.textContent = '';
+    try {
+      const r = await fetch('/api/roadmap/item', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      if (!r.ok) { err.textContent = `Save failed (${r.status})`; return; }
+      closeAddFeature();
+      await refreshRoadmap();
+    } catch (e) { err.textContent = `Network error: ${e.message}`; }
+  });
   document.getElementById('btn-roadmap-seed').addEventListener('click', async () => {
     let items = state.snapshot?.roadmapSeed || [];
     if (!items.length) {
