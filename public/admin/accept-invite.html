@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Set your password · Feature Tracker</title>
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script>
+    (function () {
+      const s = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (s === 'dark' || (!s && prefersDark)) document.documentElement.classList.add('dark');
+    })();
+  </script>
+</head>
+<body class="min-h-full font-sans antialiased text-ink-900 dark:text-slate-100" style="background: var(--bg);">
+
+  <main class="login-shell">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-mark">▨</div>
+        <div>
+          <div style="font-weight:700;font-size:18px;letter-spacing:-0.01em">Feature Tracker</div>
+          <div style="font-size:12px;color:var(--ink-500)">Engineering Command Center</div>
+        </div>
+      </div>
+
+      <!-- Three view states — one is visible at a time -->
+      <div id="loading-state">
+        <p class="login-sub" style="margin-top:20px">Checking your invite link…</p>
+      </div>
+
+      <div id="invalid-state" class="hidden">
+        <h1 class="login-title" style="color:#b91c1c">This link isn't valid</h1>
+        <p class="login-sub" id="invalid-reason">Your invitation link has expired or was already used.</p>
+        <a href="/admin/login.html" class="btn-primary" style="display:inline-block;margin-top:16px;text-align:center;padding:10px 16px">Go to sign in</a>
+        <p class="login-oauth-hint" style="margin-top:14px">Ask an admin to send a new invite.</p>
+      </div>
+
+      <div id="form-state" class="hidden">
+        <h1 class="login-title" id="form-title">Set your password</h1>
+        <p class="login-sub" id="form-sub">Welcome — pick a password to activate your account.</p>
+
+        <div id="ai-error" class="login-error hidden"></div>
+        <div id="ai-success" class="login-success hidden"></div>
+
+        <div class="admin-me" style="margin-bottom:14px" id="ai-user-badge">—</div>
+
+        <form id="ai-form" class="login-form" autocomplete="on">
+          <label>New password
+            <input type="password" id="ai-password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" />
+          </label>
+          <label>Confirm password
+            <input type="password" id="ai-confirm" required minlength="8" autocomplete="new-password" placeholder="Type it again" />
+          </label>
+          <button type="submit" class="btn-primary login-submit">Activate account</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="login-foot">
+      <a href="/admin/login.html">Sign in instead</a>
+    </div>
+  </main>
+
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    const type  = params.get('type') || 'invitation';
+
+    function show(which) {
+      ['loading-state','invalid-state','form-state'].forEach(id => $(id).classList.toggle('hidden', id !== which));
+    }
+
+    async function boot() {
+      if (!token) return renderInvalid('Missing token in the URL.');
+      try {
+        const r = await fetch('/api/auth/invite/' + encodeURIComponent(token));
+        const data = await r.json();
+        if (!r.ok || !data.ok) return renderInvalid(data.error || 'This link is no longer valid.');
+        // Populate form for the token type
+        if (data.type === 'password_reset') {
+          $('form-title').textContent = 'Reset your password';
+          $('form-sub').textContent = 'Pick a new password for your account.';
+        }
+        $('ai-user-badge').textContent = `${data.user.name || data.user.email} · ${data.user.role}`;
+        show('form-state');
+      } catch (e) {
+        renderInvalid('Could not reach the server. Try again in a moment.');
+      }
+    }
+
+    function renderInvalid(reason) {
+      $('invalid-reason').textContent = reason;
+      show('invalid-state');
+    }
+
+    $('ai-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = $('ai-password').value;
+      const confirm  = $('ai-confirm').value;
+      const err = $('ai-error'); const ok = $('ai-success');
+      err.classList.add('hidden'); ok.classList.add('hidden');
+      if (password !== confirm) { err.textContent = "Passwords don't match."; err.classList.remove('hidden'); return; }
+      if (password.length < 8)   { err.textContent = 'Password must be at least 8 characters.'; err.classList.remove('hidden'); return; }
+      try {
+        const r = await fetch('/api/auth/accept-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password }),
+        });
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error(data.error || 'Could not set your password.');
+        ok.textContent = 'Password set. Redirecting to sign in…';
+        ok.classList.remove('hidden');
+        setTimeout(() => location.href = '/admin/login.html', 1500);
+      } catch (e) {
+        err.textContent = e.message; err.classList.remove('hidden');
+      }
+    });
+
+    boot();
+  </script>
+</body>
+</html>

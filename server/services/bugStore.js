@@ -14,7 +14,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FILE = path.join(__dirname, '..', '..', '.bugs.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..');
+const FILE = path.join(DATA_DIR, '.bugs.json');
 
 export const SEVERITY = ['Critical', 'High', 'Medium', 'Low'];
 export const PRIORITY = ['P0', 'P1', 'P2', 'P3'];

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const SETTINGS_FILE = path.join(__dirname, '..', '.settings.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..');
+const SETTINGS_FILE = path.join(DATA_DIR, '.settings.json');
 
 function parseList(raw) {
   if (Array.isArray(raw)) return raw.map(s => String(s).trim()).filter(Boolean);
@@ -106,6 +107,16 @@ export const config = {
     clientSecret: persisted.githubOAuth?.clientSecret || process.env.GITHUB_OAUTH_CLIENT_SECRET || '',
     callbackUrl:  persisted.githubOAuth?.callbackUrl  || process.env.GITHUB_OAUTH_CALLBACK_URL  || '',
   },
+  // Email delivery (invitations + password resets). Optional — when
+  // disabled or unconfigured, admins fall back to the "temp password
+  // shown in the drawer, handed over manually" flow.
+  emailProvider: {
+    provider:       persisted.emailProvider?.provider       || 'google_apps_script',
+    enabled:        Boolean(persisted.emailProvider?.enabled),
+    appsScriptUrl:  persisted.emailProvider?.appsScriptUrl  || process.env.APPS_SCRIPT_URL   || '',
+    sharedSecret:   persisted.emailProvider?.sharedSecret   || process.env.APPS_SCRIPT_SECRET || '',
+    appUrl:         persisted.emailProvider?.appUrl         || process.env.APP_URL           || '',
+  },
   env: {
     Development: parseList(process.env.ENV_DEV_KEYS  || 'dev,develop,development'),
     Test:        parseList(process.env.ENV_TEST_KEYS || 'test,qa,testing,sit'),
@@ -163,12 +174,15 @@ export function azdoProjectsFromUrls() {
   return Array.from(seen.values());
 }
 
-export function persistSettings({ token, scope, azdoUrls, azdoPat, azdoOrgUrl, azdoProject, featureNotes, sessionSecret, githubOAuth }) {
+export function persistSettings({ token, scope, azdoUrls, azdoPat, azdoOrgUrl, azdoProject, featureNotes, sessionSecret, githubOAuth, emailProvider }) {
   const current = loadPersisted();
   const nextUrls = normaliseAzdoUrls({ ...(current.azdoUrls || {}), ...(azdoUrls || {}) });
   const nextOAuth = githubOAuth !== undefined
     ? { ...(current.githubOAuth || {}), ...githubOAuth }
     : current.githubOAuth;
+  const nextEmail = emailProvider !== undefined
+    ? { ...(current.emailProvider || {}), ...emailProvider }
+    : current.emailProvider;
   const next = {
     ...current,
     ...(token         !== undefined ? { token } : {}),
@@ -180,6 +194,7 @@ export function persistSettings({ token, scope, azdoUrls, azdoPat, azdoOrgUrl, a
     ...(featureNotes  !== undefined ? { featureNotes } : {}),
     ...(sessionSecret !== undefined ? { sessionSecret } : {}),
     ...(githubOAuth   !== undefined ? { githubOAuth: nextOAuth } : {}),
+    ...(emailProvider !== undefined ? { emailProvider: nextEmail } : {}),
   };
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2), { mode: 0o600 });
 
@@ -190,6 +205,7 @@ export function persistSettings({ token, scope, azdoUrls, azdoPat, azdoOrgUrl, a
   if (featureNotes !== undefined) config.featureNotes = next.featureNotes || {};
   if (sessionSecret !== undefined) config.sessionSecret = next.sessionSecret || '';
   if (githubOAuth !== undefined) config.githubOAuth = { ...config.githubOAuth, ...nextOAuth };
+  if (emailProvider !== undefined) config.emailProvider = { ...config.emailProvider, ...nextEmail };
   if (azdoUrls !== undefined || azdoOrgUrl !== undefined || azdoProject !== undefined) {
     config.azdo.urls = seedFromLegacy(nextUrls, { orgUrl: next.azdoOrgUrl, project: next.azdoProject });
     // Re-prime mirror

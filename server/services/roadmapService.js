@@ -6,7 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FILE = path.join(__dirname, '..', '..', '.roadmap.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..');
+const FILE = path.join(DATA_DIR, '.roadmap.json');
 
 function load() {
   try { if (fs.existsSync(FILE)) return JSON.parse(fs.readFileSync(FILE, 'utf-8')); } catch {}

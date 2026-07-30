@@ -6,3 +6,4 @@ node_modules/
 .settings.json
 .users.json
 .bugs.json
+.invites.json

@@ -10,6 +10,7 @@ import {
   ROLES, listUsers, getUserById, getUserByEmail, upsertUser, deleteUser,
 } from '../services/userStore.js';
 import { localLogin, logout, requireAuth, requireRole } from '../services/authService.js';
+import { sendInviteForNewUser } from './invites.js';
 
 export const authRouter = express.Router();
 const json = express.json({ limit: '128kb' });
@@ -25,6 +26,11 @@ authRouter.get('/me', (req, res) => {
     authenticated: true,
     user: req.user,
     githubOAuthEnabled: Boolean(config.githubOAuth?.clientId && config.githubOAuth?.clientSecret),
+    emailEnabled: Boolean(
+      config.emailProvider?.enabled
+      && config.emailProvider?.appsScriptUrl
+      && config.emailProvider?.sharedSecret,
+    ),
   });
 });
 
@@ -74,10 +80,18 @@ adminRouter.use(requireRole('Admin'));
 
 adminRouter.get('/users', (_req, res) => res.json({ users: listUsers(), roles: ROLES }));
 
-adminRouter.post('/users', json, (req, res) => {
+adminRouter.post('/users', json, async (req, res) => {
   try {
+    const wantsInvite = Boolean(req.body?.sendInvite);
     const u = upsertUser({ ...req.body, mustChangePassword: Boolean(req.body?.password) });
-    res.json({ user: u });
+    // Fire the invite email AFTER creation succeeds, and don't roll back
+    // the user if email fails — the account is real either way; the admin
+    // can hit "Resend invite" from the Team row.
+    let inviteResult = null;
+    if (wantsInvite) {
+      inviteResult = await sendInviteForNewUser({ userId: u.id, triggeredBy: req.user?.email });
+    }
+    res.json({ user: u, invite: inviteResult });
   } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
 });
 

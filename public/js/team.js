@@ -12,6 +12,7 @@ let state = {
   users: [],
   roles: [],
   repositories: [],
+  emailEnabled: false,    // server tells us via /api/auth/me whether the mailer is configured
   filters: { q: '', role: '', department: '', status: '' },
   editing: null,          // the user record currently in the drawer (or null for a fresh add)
   permsCustom: false,     // has the admin ticked permissions away from the role template?
@@ -20,9 +21,21 @@ let state = {
 
 // ---- Public API ----
 
-export function initTeam({ me, repositories }) {
+export function initTeam({ me, repositories, emailEnabled }) {
   state.me = me;
   state.repositories = repositories || [];
+  state.emailEnabled = Boolean(emailEnabled);
+  // Show / hide the "Send invitation email" checkbox based on server config.
+  // Also flip the password field's helper text so admins know which flow
+  // they're in without needing to think about it.
+  const inviteRow = $('ud-send-invite-row');
+  const passwordHint = $('ud-password-hint');
+  if (inviteRow) inviteRow.style.display = state.emailEnabled ? '' : 'none';
+  if (passwordHint) {
+    passwordHint.textContent = state.emailEnabled
+      ? '(leave blank when sending invite — user picks their own)'
+      : '(email delivery is off — set a temp password and hand it over)';
+  }
   wireFilters();
   wireDrawer();
   $('btn-team-add').addEventListener('click', () => openDrawer(null));
@@ -121,6 +134,8 @@ function rowHtml(u) {
     <td class="text-xs">${last}</td>
     <td style="text-align:right; white-space:nowrap">
       <button class="admin-btn" data-act="edit">Edit</button>
+      ${state.emailEnabled ? `<button class="admin-btn" data-act="resend" title="Send a fresh invitation email">Resend invite</button>` : ''}
+      ${state.emailEnabled && u.hasPassword ? `<button class="admin-btn" data-act="reset" title="Email a password-reset link">Reset password</button>` : ''}
       <button class="admin-btn" data-act="toggle">${u.disabled ? 'Enable' : 'Deactivate'}</button>
       <button class="admin-btn admin-btn-danger" data-act="delete">Delete</button>
     </td>
@@ -140,6 +155,21 @@ function wireRows(rows) {
           body: JSON.stringify({ disabled: !u.disabled }),
         });
         return refreshTeam();
+      }
+      if (act === 'resend') {
+        const r = await fetch(`/api/team/users/${u.id}/resend-invite`, { method: 'POST' });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) alert('Invitation resent to ' + u.email);
+        else alert('Resend failed: ' + (data.error || r.status));
+        return;
+      }
+      if (act === 'reset') {
+        if (!confirm(`Email a password reset link to ${u.email}? Their current password will keep working until they set a new one.`)) return;
+        const r = await fetch(`/api/team/users/${u.id}/send-reset`, { method: 'POST' });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) alert('Reset link sent to ' + u.email);
+        else alert('Reset failed: ' + (data.error || r.status));
+        return;
       }
       if (act === 'delete') {
         if (u.id === state.me?.id) { alert("You can't delete your own account."); return; }
@@ -294,6 +324,10 @@ async function saveUser() {
   };
   const pw = $('ud-password').value;
   if (pw) body.password = pw;
+  // Only send the sendInvite flag on new-user POST, and only when the mailer
+  // is on. Prevents an accidental invite re-send when the admin is editing
+  // an existing user.
+  if (!body.id && state.emailEnabled && $('ud-send-invite').checked) body.sendInvite = true;
 
   const method = body.id ? 'PATCH' : 'POST';
   const url = body.id ? '/api/team/users/' + body.id : '/api/team/users';
