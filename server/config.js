@@ -95,6 +95,17 @@ export const config = {
   apiBase: (process.env.GITHUB_API_BASE || 'https://api.github.com').replace(/\/$/, ''),
   scope: parseList(persisted.scope || process.env.GITHUB_SCOPE || ''),
   webhookSecret: process.env.GITHUB_WEBHOOK_SECRET || '',
+  // Persisted session secret so restarts don't log everyone out. First-run
+  // it's empty; authService.sessionSecret() generates one and stores it here.
+  sessionSecret: persisted.sessionSecret || process.env.SESSION_SECRET || '',
+  // GitHub OAuth (for the Sign in with GitHub button). Optional — the app
+  // boots fine without it; the OAuth strategy just isn't registered until
+  // both clientId and clientSecret land in .settings.json.
+  githubOAuth: {
+    clientId:     persisted.githubOAuth?.clientId     || process.env.GITHUB_OAUTH_CLIENT_ID     || '',
+    clientSecret: persisted.githubOAuth?.clientSecret || process.env.GITHUB_OAUTH_CLIENT_SECRET || '',
+    callbackUrl:  persisted.githubOAuth?.callbackUrl  || process.env.GITHUB_OAUTH_CALLBACK_URL  || '',
+  },
   env: {
     Development: parseList(process.env.ENV_DEV_KEYS  || 'dev,develop,development'),
     Test:        parseList(process.env.ENV_TEST_KEYS || 'test,qa,testing,sit'),
@@ -152,9 +163,12 @@ export function azdoProjectsFromUrls() {
   return Array.from(seen.values());
 }
 
-export function persistSettings({ token, scope, azdoUrls, azdoPat, azdoOrgUrl, azdoProject, featureNotes }) {
+export function persistSettings({ token, scope, azdoUrls, azdoPat, azdoOrgUrl, azdoProject, featureNotes, sessionSecret, githubOAuth }) {
   const current = loadPersisted();
   const nextUrls = normaliseAzdoUrls({ ...(current.azdoUrls || {}), ...(azdoUrls || {}) });
+  const nextOAuth = githubOAuth !== undefined
+    ? { ...(current.githubOAuth || {}), ...githubOAuth }
+    : current.githubOAuth;
   const next = {
     ...current,
     ...(token         !== undefined ? { token } : {}),
@@ -164,6 +178,8 @@ export function persistSettings({ token, scope, azdoUrls, azdoPat, azdoOrgUrl, a
     ...(azdoOrgUrl    !== undefined ? { azdoOrgUrl } : {}),
     ...(azdoProject   !== undefined ? { azdoProject } : {}),
     ...(featureNotes  !== undefined ? { featureNotes } : {}),
+    ...(sessionSecret !== undefined ? { sessionSecret } : {}),
+    ...(githubOAuth   !== undefined ? { githubOAuth: nextOAuth } : {}),
   };
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2), { mode: 0o600 });
 
@@ -172,6 +188,8 @@ export function persistSettings({ token, scope, azdoUrls, azdoPat, azdoOrgUrl, a
   if (scope !== undefined) config.scope = parseList(next.scope || '');
   if (azdoPat !== undefined) config.azdo.pat = next.azdoPat || '';
   if (featureNotes !== undefined) config.featureNotes = next.featureNotes || {};
+  if (sessionSecret !== undefined) config.sessionSecret = next.sessionSecret || '';
+  if (githubOAuth !== undefined) config.githubOAuth = { ...config.githubOAuth, ...nextOAuth };
   if (azdoUrls !== undefined || azdoOrgUrl !== undefined || azdoProject !== undefined) {
     config.azdo.urls = seedFromLegacy(nextUrls, { orgUrl: next.azdoOrgUrl, project: next.azdoProject });
     // Re-prime mirror
