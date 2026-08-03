@@ -28,6 +28,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      # Keep the provisioned app name identical to the one deploy.yml ships to.
+      DASH_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+
       # Mapped onto the readEnvironmentVariable() calls in main.bicepparam.
       # Unset secrets arrive as empty strings, which the template reads as
       # "leave the existing vault value alone".

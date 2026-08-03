@@ -5,10 +5,13 @@ using './main.bicep'
 // infra workflow so nothing sensitive is committed here.
 // ---------------------------------------------------------------------------
 
-// Must be globally unique — this becomes <name>.azurewebsites.net.
-param webAppName = 'feature-dashboard'
+// Must be globally unique — this becomes <name>.azurewebsites.net, and plain
+// 'feature-dashboard' is already taken. The infra workflow feeds the same
+// repository variable here that the app workflow deploys to, so the two cannot
+// drift onto different apps.
+param webAppName = readEnvironmentVariable('DASH_WEBAPP_NAME', 'feature-dashboard')
 
-param location = 'centralindia'
+param location = readEnvironmentVariable('DASH_LOCATION', 'centralindia')
 
 param tags = {
   workload: 'feature-dashboard'
