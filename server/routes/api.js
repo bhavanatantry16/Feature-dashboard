@@ -6,8 +6,24 @@ import { invalidate } from '../services/cache.js';
 import { handleWebhook, verifySignature, subscribe } from '../services/webhookService.js';
 import { getRoadmap, setRoadmap, parseCsv } from '../services/roadmapService.js';
 import { getAzdoEnvView } from '../services/azdoService.js';
+import { listUsers } from '../services/userStore.js';
 
 export const apiRouter = express.Router();
+
+// Lightweight roster of the CURRENT team — active users with a linked GitHub
+// login. Used by the Board's "All people" filter so the dropdown reflects
+// who's actually on the team today, not GitHub's all-time contributor list
+// (which includes past members and bots like dependabot[bot]).
+apiRouter.get('/roster', (_req, res) => {
+  const roster = listUsers()
+    .filter(u => !u.disabled && u.githubLogin)
+    .map(u => ({
+      name: u.name || u.githubLogin,
+      githubLogin: u.githubLogin,
+      avatarUrl: u.avatarUrl || null,
+    }));
+  res.json({ roster });
+});
 
 function wantsDemo(req) { return req.query.demo === '1' || req.query.demo === 'true'; }
 

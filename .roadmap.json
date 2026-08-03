@@ -109,7 +109,18 @@
       "linkedRepo": "",
       "startDate": "",
       "endDate": ""
+    },
+    {
+      "id": "password-authentication",
+      "name": "Password authentication",
+      "description": "",
+      "quarter": "Q1",
+      "status": "Waiting",
+      "owner": "",
+      "linkedRepo": "",
+      "startDate": "",
+      "endDate": ""
     }
   ],
-  "updatedAt": "2026-07-27T10:37:44.553Z"
+  "updatedAt": "2026-07-31T06:09:17.870Z"
 }

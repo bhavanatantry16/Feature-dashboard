@@ -8,6 +8,7 @@ import { initBugs, refreshBugs } from './bugs.js';
 const state = {
   snapshot: null,
   roadmap: [],
+  roster: [],       // current team members with a linked GitHub login — powers the "All people" filter
   refreshTimer: null,
   syncedTicker: null,
   refreshSeconds: 60,
@@ -51,7 +52,7 @@ async function boot() {
     state.refreshSeconds = cfg.clientRefreshSeconds || 60;
     document.getElementById('refresh-cadence').textContent = state.refreshSeconds;
   } catch {}
-  await Promise.all([refreshSnapshot(false), refreshRoadmap()]);
+  await Promise.all([refreshSnapshot(false), refreshRoadmap(), refreshRoster()]);
   // Bugs is available to every signed-in user (view.bugs is on every role
   // template). Team is only initialised for Admin+ — for everyone else the
   // tab button stays hidden by renderSignedInHeader below.
@@ -135,6 +136,13 @@ async function refreshSnapshot(force) {
 async function refreshRoadmap() {
   try { const r = await fetch('/api/roadmap').then(r => r.json()); state.roadmap = r.items || []; renderRoadmapCard(); } catch {}
 }
+async function refreshRoster() {
+  try {
+    const r = await fetch('/api/roster').then(r => r.json());
+    state.roster = Array.isArray(r.roster) ? r.roster : [];
+    if (state.snapshot) populateFilters(state.snapshot);
+  } catch {}
+}
 
 function updateLastSynced(ts) {
   const el = document.getElementById('last-synced');
@@ -182,8 +190,57 @@ function setupChips() {
 
 function populateFilters(s) {
   fillOptions('f-repo', Array.from(new Set(s.repositories.map(r => r.full_name))).map(fn => ({ value: fn, label: (fn.split('/')[1] || fn) })));
-  fillOptions('f-dev', Array.from(new Set([...(s.contributors || []).map(c => c.login), ...(s.features || []).flatMap(f => f.developers || [])])).filter(Boolean).sort().map(login => ({ value: login, label: niceName(login) })));
+  fillOptions('f-dev', peopleFilterOptions(s));
   fillOptions('f-sprint', Array.from(new Set((s.features || []).map(f => f.milestone).filter(Boolean))).sort().map(m => ({ value: m, label: m })));
+}
+
+// The "All people" dropdown should reflect the current team, not GitHub's
+// all-time contributor list (which drags in past members and bots like
+// dependabot[bot]). Two sources, in priority order:
+//   1. /api/roster — active team members with a linked GitHub login
+//      (the authoritative list once admins have filled in GitHub logins).
+//   2. Fallback: people who've authored a commit or PR in the last
+//      RECENT_ACTIVITY_DAYS days, plus anyone currently assigned to an
+//      open feature. Bots are stripped. Recency drops past members off
+//      naturally without needing manual maintenance.
+const RECENT_ACTIVITY_DAYS = 60;
+
+function peopleFilterOptions(s) {
+  if (state.roster && state.roster.length) {
+    return state.roster
+      .filter(u => u.githubLogin)
+      .slice()
+      .sort((a, b) => (a.name || a.githubLogin).localeCompare(b.name || b.githubLogin))
+      .map(u => ({ value: u.githubLogin, label: u.name || niceName(u.githubLogin) }));
+  }
+  const cutoff = Date.now() - RECENT_ACTIVITY_DAYS * 86400_000;
+  const recent = new Set();
+  for (const c of (s.commits || [])) {
+    if (c.author && c.date && new Date(c.date).getTime() >= cutoff) recent.add(c.author);
+  }
+  for (const p of (s.prs || [])) {
+    const when = p.updated_at || p.created_at;
+    if (p.author && when && new Date(when).getTime() >= cutoff) recent.add(p.author);
+  }
+  // Anyone assigned to a still-open feature — even if they haven't pushed
+  // recently, you want to be able to filter by them.
+  for (const f of (s.features || [])) {
+    if (f.state === 'open') for (const d of (f.developers || [])) if (d) recent.add(d);
+  }
+  return Array.from(recent)
+    .filter(login => login && !isBotLogin(login))
+    .sort()
+    .map(login => ({ value: login, label: niceName(login) }));
+}
+function isBotLogin(login) {
+  const l = String(login).toLowerCase();
+  return /\[bot\]$/.test(l)
+    || /\bbot\b/.test(l)              // "Rhoggs Bot Test Account", "test-bot-2"
+    || /\bdebug\b/.test(l)            // "Preranashetty Debug" — non-human test accounts
+    || l === 'dependabot'
+    || l === 'github-actions'
+    || l === 'actions-user'
+    || l.endsWith('-bot');
 }
 function fillOptions(id, entries) {
   const sel = document.getElementById(id); if (!sel) return;
