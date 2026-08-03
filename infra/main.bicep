@@ -309,7 +309,11 @@ resource web 'Microsoft.Web/sites@2023-12-01' = {
     clientAffinityEnabled: true
     siteConfig: {
       linuxFxVersion: linuxFxVersion
-      appCommandLine: 'node server/index.js'
+      // The flat-file stores call writeFileSync straight onto DATA_DIR without
+      // creating it first, so an absent /home/data crashes the process on boot
+      // (ENOENT on .users.json, from ensureBootstrapAdmin). Creating it here
+      // keeps that self-healing rather than a one-off manual step.
+      appCommandLine: 'mkdir -p /home/data && node server/index.js'
       // Required: the in-memory TTL cache and open SSE streams do not survive
       // the platform unloading an idle app.
       alwaysOn: true
