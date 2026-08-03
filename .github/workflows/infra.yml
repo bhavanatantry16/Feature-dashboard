@@ -1,0 +1,89 @@
+name: Infrastructure
+
+# Bicep is deployed separately from the app: infrastructure changes are rare,
+# and a what-if on the pull request is the review artefact.
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'infra/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write # to post the what-if output as a comment
+
+concurrency:
+  group: infra
+  cancel-in-progress: false
+
+jobs:
+  infra:
+    name: ${{ github.event_name == 'pull_request' && 'What-if' || 'Deploy' }}
+    runs-on: ubuntu-latest
+
+    env:
+      # Mapped onto the readEnvironmentVariable() calls in main.bicepparam.
+      # Unset secrets arrive as empty strings, which the template reads as
+      # "leave the existing vault value alone".
+      #
+      # The DASH_ prefix is deliberate: GitHub reserves GITHUB_* for its own
+      # environment variables and setting one here is an error.
+      DASH_GITHUB_TOKEN: ${{ secrets.DASHBOARD_GITHUB_PAT }}
+      DASH_SESSION_SECRET: ${{ secrets.DASHBOARD_SESSION_SECRET }}
+      DASH_WEBHOOK_SECRET: ${{ secrets.DASHBOARD_WEBHOOK_SECRET }}
+      DASH_OAUTH_CLIENT_SECRET: ${{ secrets.DASHBOARD_OAUTH_CLIENT_SECRET }}
+      DASH_AZDO_PAT: ${{ secrets.DASHBOARD_AZDO_PAT }}
+      DASH_APPS_SCRIPT_SECRET: ${{ secrets.DASHBOARD_APPS_SCRIPT_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Lint Bicep
+        run: |
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          az bicep build-params --file infra/main.bicepparam --stdout > /dev/null
+
+      - name: What-if
+        if: github.event_name == 'pull_request'
+        run: |
+          az deployment group what-if \
+            --resource-group '${{ vars.AZURE_RESOURCE_GROUP }}' \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam \
+            --result-format FullResourcePayloads
+
+      - name: Deploy
+        if: github.event_name != 'pull_request'
+        run: |
+          az deployment group create \
+            --resource-group '${{ vars.AZURE_RESOURCE_GROUP }}' \
+            --name 'feature-dashboard-${{ github.run_number }}' \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam \
+            --output json > deployment.json
+
+      - name: Summarise
+        if: github.event_name != 'pull_request'
+        run: |
+          {
+            echo '### Infrastructure deployed'
+            echo
+            echo "| Output | Value |"
+            echo "| --- | --- |"
+            jq -r '.properties.outputs
+                   | to_entries[]
+                   | "| \(.key) | \(.value.value) |"' deployment.json
+          } >> "$GITHUB_STEP_SUMMARY"

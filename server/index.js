@@ -16,6 +16,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Behind a TLS-terminating reverse proxy (Azure App Service, Heroku, nginx,
+// any load balancer) the hop into this process is plain HTTP, so req.secure is
+// false and req.protocol reads 'http'. authService.js marks the session cookie
+// `secure` in production, and express-session refuses to send a secure cookie
+// over what it believes is an insecure connection — logins appear to succeed
+// and then no session ever sticks. Trusting the first proxy hop lets Express
+// read X-Forwarded-Proto and get this right. No effect on local dev, where
+// there is no proxy and no X-Forwarded-* header to trust.
+app.set('trust proxy', 1);
+
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 if (config.corsOrigins.length) app.use(cors({ origin: config.corsOrigins, credentials: true }));
 app.use(compression());

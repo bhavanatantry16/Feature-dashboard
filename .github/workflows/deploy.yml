@@ -1,0 +1,88 @@
+name: Deploy app
+
+# One environment, one instance: master is what runs in Azure.
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'infra/**'
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  id-token: write # OIDC federated login to Azure — no publish profile to rotate
+  contents: read
+
+# Never let two deploys overlap onto the single instance.
+concurrency:
+  group: deploy-app
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22.x'
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.webapp-url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # Dependencies are installed here rather than by Oryx on the app side, so
+      # what CI tested is byte-for-byte what runs. Matches
+      # SCM_DO_BUILD_DURING_DEPLOYMENT=false in the Bicep.
+      - name: Install production dependencies
+        run: npm ci --omit=dev
+
+      # There is no build step — the frontend is static HTML with Tailwind and
+      # Chart.js from CDN, served by Express itself.
+      - name: Create deployment package
+        run: |
+          zip -r release.zip . \
+            -x '.git/*' \
+            -x '.github/*' \
+            -x 'infra/*' \
+            -x '.env' \
+            -x 'release.zip'
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to App Service
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          package: release.zip
+
+      # /healthz is the only route that stays anonymous — everything else
+      # redirects to the login page, which would make a 302 look like success.
+      - name: Smoke test
+        run: |
+          URL="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/healthz"
+          for attempt in 1 2 3 4 5 6; do
+            CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$URL" || echo 000)
+            echo "attempt $attempt: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then
+              echo "App is serving."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "App did not return 200 after startup. Check the log stream:"
+          echo "  az webapp log tail --name ${{ vars.AZURE_WEBAPP_NAME }} --resource-group ${{ vars.AZURE_RESOURCE_GROUP }}"
+          exit 1
