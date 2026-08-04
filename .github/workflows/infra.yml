@@ -23,9 +23,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Azure credentials are optional repository configuration, so without this
+  # gate every pull request to a repo that has not wired up OIDC yet fails at
+  # "Sign in to Azure" — a red X that says nothing except "not set up". The
+  # secrets context is not readable from a job-level `if`, hence a preflight
+  # job that reads them as env and publishes a plain output.
+  preflight:
+    name: Check Azure configuration
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        env:
+          CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+        run: |
+          if [ -n "$CLIENT_ID" ] && [ -n "$TENANT_ID" ] && [ -n "$SUBSCRIPTION_ID" ] && [ -n "$RESOURCE_GROUP" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Azure configuration present." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Infrastructure job skipped"
+              echo
+              echo "Azure is not wired up for this repository yet, so there is nothing to deploy against."
+              echo
+              echo "To enable it, set repository secrets \`AZURE_CLIENT_ID\`, \`AZURE_TENANT_ID\`,"
+              echo "\`AZURE_SUBSCRIPTION_ID\` and variables \`AZURE_RESOURCE_GROUP\`, \`AZURE_WEBAPP_NAME\`,"
+              echo "then add federated credentials to the Entra app registration."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   infra:
     name: ${{ github.event_name == 'pull_request' && 'What-if' || 'Deploy' }}
     runs-on: ubuntu-latest
+    needs: preflight
+    if: needs.preflight.outputs.configured == 'true'
 
     env:
       # Keep the provisioned app name identical to the one deploy.yml ships to.
