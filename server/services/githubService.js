@@ -4,7 +4,58 @@ import { cached } from './cache.js';
 const UA = 'github-engineering-intelligence/1.0';
 
 // -------------------- Low-level fetch --------------------
-async function gh(url, { method = 'GET', body, retries = 2, accept = 'application/vnd.github+json' } = {}) {
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Set whenever GitHub throttles us, so a snapshot can tell the UI that the
+// numbers it is about to render are incomplete rather than genuinely zero.
+let lastRateLimitAt = null;
+
+// GitHub enforces two rate limits and they look nothing alike on the wire:
+//
+//   Primary   — the hourly quota. 403 or 429 with x-ratelimit-remaining: 0 and
+//               x-ratelimit-reset saying when it refills.
+//   Secondary — burst and concurrency protection. 403 with the quota headers
+//               still reporting thousands remaining, usually a retry-after
+//               header, and a body that says "secondary rate limit".
+//
+// Testing only for `remaining === 0` misses the secondary limit completely, so
+// those responses used to fall through to the generic !res.ok branch and get
+// thrown as hard errors with no retry. Every caller wraps these in
+// `.catch(() => [])`, so the whole snapshot silently collapsed to zeros — the
+// dashboard reported "0 commits today" when the truth was "GitHub is throttling
+// us". That is the failure this function exists to prevent.
+function isRateLimited(res, bodyText) {
+  if (res.status === 429) return true;
+  if (res.status !== 403) return false;
+  if (Number(res.headers.get('x-ratelimit-remaining') ?? '1') === 0) return true;
+  if (res.headers.get('retry-after')) return true;
+  return /secondary rate limit|abuse detection|rate limit exceeded/i.test(bodyText || '');
+}
+
+function rateLimitDelayMs(res, attempt) {
+  // retry-after is authoritative when GitHub sends it (seconds, rarely a date).
+  const retryAfter = res.headers.get('retry-after');
+  if (retryAfter) {
+    const secs = Number(retryAfter);
+    if (Number.isFinite(secs)) return clampDelay(secs * 1000);
+    const when = Date.parse(retryAfter);
+    if (!Number.isNaN(when)) return clampDelay(when - Date.now());
+  }
+  const remain = Number(res.headers.get('x-ratelimit-remaining') ?? '1');
+  const reset = Number(res.headers.get('x-ratelimit-reset') || '0');
+  if (remain === 0 && reset) return clampDelay(reset * 1000 - Date.now());
+  // Secondary limit with no guidance. Exponential backoff plus jitter, so a
+  // fan-out that got throttled together does not retry in lockstep and trip
+  // the very same limit again.
+  return clampDelay(1_000 * 2 ** attempt + Math.floor(Math.random() * 500));
+}
+
+const clampDelay = ms => Math.min(60_000, Math.max(1_000, ms));
+
+// Returns the raw Response so callers that need headers (pagination follows
+// the Link header) get the same retry and backoff treatment as everyone else.
+async function ghRequest(url, { method = 'GET', body, retries = 4, accept = 'application/vnd.github+json' } = {}) {
   if (!isConfigured()) throw Object.assign(new Error('GitHub not configured'), { code: 'NOT_CONFIGURED', status: 428 });
   const headers = {
     'Authorization': `Bearer ${config.token}`,
@@ -22,18 +73,24 @@ async function gh(url, { method = 'GET', body, retries = 2, accept = 'applicatio
       });
     } catch (netErr) {
       if (attempt > retries) throw Object.assign(new Error(`Network error: ${netErr.message}`), { code: 'NETWORK', status: 502 });
-      await new Promise(r => setTimeout(r, 400 * attempt));
+      await sleep(400 * attempt);
       continue;
     }
 
-    // Rate limit
-    const remain = Number(res.headers.get('x-ratelimit-remaining') || '1');
-    const reset = Number(res.headers.get('x-ratelimit-reset') || '0');
-    if ((res.status === 403 && remain === 0) || res.status === 429) {
-      if (attempt > retries) throw Object.assign(new Error('Rate limited'), { code: 'RATE_LIMIT', status: 429 });
-      const wait = reset ? Math.min(30_000, Math.max(1_000, reset * 1000 - Date.now())) : 3000;
-      await new Promise(r => setTimeout(r, wait));
-      continue;
+    if (res.status === 403 || res.status === 429) {
+      // Safe to drain the body here: either we retry or we throw.
+      const text = await res.text().catch(() => '');
+      if (isRateLimited(res, text)) {
+        lastRateLimitAt = Date.now();
+        if (attempt > retries) {
+          throw Object.assign(new Error('GitHub is rate limiting this token — data will be incomplete until it clears'), { code: 'RATE_LIMIT', status: 429 });
+        }
+        const wait = rateLimitDelayMs(res, attempt);
+        console.warn(`[github] rate limited (${res.status}) on ${url} — waiting ${Math.round(wait / 1000)}s, attempt ${attempt}/${retries}`);
+        await sleep(wait);
+        continue;
+      }
+      throw Object.assign(new Error(`GitHub ${res.status}: ${text.slice(0, 300)}`), { code: 'HTTP', status: res.status });
     }
     if (res.status === 401) throw Object.assign(new Error('GitHub auth failed — check token & scopes'), { code: 'AUTH', status: 401 });
     if (res.status === 404) throw Object.assign(new Error(`Not found: ${url}`), { code: 'NOT_FOUND', status: 404 });
@@ -41,28 +98,43 @@ async function gh(url, { method = 'GET', body, retries = 2, accept = 'applicatio
       const text = await res.text().catch(() => '');
       throw Object.assign(new Error(`GitHub ${res.status}: ${text.slice(0, 300)}`), { code: 'HTTP', status: res.status });
     }
-    if (accept === 'application/vnd.github.diff' || accept === 'application/vnd.github.patch') return res.text();
-    return res.json();
+    return res;
   }
+}
+
+async function gh(url, opts = {}) {
+  const res = await ghRequest(url, opts);
+  const accept = opts.accept;
+  if (accept === 'application/vnd.github.diff' || accept === 'application/vnd.github.patch') return res.text();
+  return res.json();
 }
 
 async function ghPaginated(pathAndQuery, { limit = 200 } = {}) {
   const out = [];
   let url = pathAndQuery + (pathAndQuery.includes('?') ? '&' : '?') + 'per_page=100';
   while (url && out.length < limit) {
-    const res = await fetch((url.startsWith('http') ? '' : config.apiBase) + url, {
-      headers: {
-        'Authorization': `Bearer ${config.token}`,
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': UA,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    });
-    if (res.status === 404) return out;
-    if (!res.ok) throw Object.assign(new Error(`GitHub ${res.status}`), { status: res.status });
+    let res;
+    try {
+      res = await ghRequest(url);
+    } catch (err) {
+      // A missing endpoint is normal (no Actions on the repo, no deployments).
+      // Anything else — rate limits above all — must surface so the caller can
+      // report incomplete data instead of quietly showing zeros.
+      if (err.code === 'NOT_FOUND') return out;
+      throw err;
+    }
     const page = await res.json();
-    if (!Array.isArray(page)) break;
-    out.push(...page);
+    // Most list endpoints return a bare array, but a few wrap the list in an
+    // object: actions/runs → workflow_runs, check-runs → check_runs,
+    // actions/artifacts → artifacts, search → items. The old bare
+    // Array.isArray() check bailed on the first page of those, which is why
+    // workflow runs came back empty every single time and failedBuilds,
+    // successfulBuilds and buildSuccessRate were permanently zero.
+    const items = Array.isArray(page)
+      ? page
+      : (page?.workflow_runs || page?.check_runs || page?.artifacts || page?.items);
+    if (!Array.isArray(items)) break;
+    out.push(...items);
     const link = res.headers.get('link') || '';
     const m = link.match(/<([^>]+)>;\s*rel="next"/);
     url = m ? m[1] : null;
@@ -70,19 +142,41 @@ async function ghPaginated(pathAndQuery, { limit = 200 } = {}) {
   return out.slice(0, limit);
 }
 
+// Bounded concurrency. The per-repo fetch used to fire ten paginated requests
+// at once and then one request per deployment and per pull request — several
+// hundred in flight on an active repo. GitHub's secondary limit trips around a
+// hundred concurrent, so a single snapshot could throttle the token and keep it
+// throttled on every refresh.
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
 // -------------------- Resolve scope → concrete repos --------------------
 async function resolveRepos() {
   const items = [];
   for (const entry of config.scope) {
-    if (entry.includes('/')) {
-      try {
-        const r = await gh(`/repos/${entry}`);
-        items.push(r);
-      } catch {}
-    } else {
-      // treat as org
-      const repos = await ghPaginated(`/orgs/${entry}/repos?sort=pushed&direction=desc`, { limit: 30 });
-      items.push(...repos);
+    try {
+      if (entry.includes('/')) {
+        items.push(await gh(`/repos/${entry}`));
+      } else {
+        // treat as org
+        items.push(...await ghPaginated(`/orgs/${entry}/repos?sort=pushed&direction=desc`, { limit: 30 }));
+      }
+    } catch (err) {
+      // This used to be a bare `catch {}`, which meant a throttled or
+      // unauthorised token produced an empty repo list and therefore a snapshot
+      // of zeros that looked exactly like a quiet week. Say what happened.
+      console.warn(`[github] could not resolve scope entry "${entry}": ${err.message}`);
     }
   }
   return items.slice(0, 30); // hard cap for perf
@@ -116,8 +210,11 @@ export async function getSnapshot() {
   const ttl = config.cacheTtlSeconds;
   const repos = await cached('repos', ttl, resolveRepos);
 
-  const repoFetch = repos.map(r => cached(`repo:${r.full_name}`, ttl, () => fetchRepo(r)));
-  const perRepo = await Promise.all(repoFetch);
+  // Repos are fetched a few at a time rather than all at once. The scope caps
+  // at 30 repos and each one issues dozens of requests, so an unbounded
+  // Promise.all here was the outer half of the concurrency burst that trips
+  // GitHub's secondary rate limit.
+  const perRepo = await mapLimit(repos, 3, r => cached(`repo:${r.full_name}`, ttl, () => fetchRepo(r)));
 
   // ---- flatten collections
   const allCommits = perRepo.flatMap(x => x.commits);
@@ -361,9 +458,21 @@ export async function getSnapshot() {
     ],
   };
 
+  // A snapshot of zeros is ambiguous: it means either "a genuinely quiet
+  // period" or "we could not read GitHub at all". Say which, so nobody goes
+  // hunting through unrelated settings to explain an empty dashboard.
+  const warnings = [];
+  if (config.scope.length && !repos.length) {
+    warnings.push(`None of the ${config.scope.length} configured scope entr${config.scope.length === 1 ? 'y' : 'ies'} could be read from GitHub. Check that the token is valid and can see ${config.scope.join(', ')}.`);
+  }
+  if (lastRateLimitAt && Date.now() - lastRateLimitAt < 10 * 60_000) {
+    warnings.push('GitHub rate limited this token in the last 10 minutes, so these numbers may be incomplete.');
+  }
+
   return {
     generatedAt: new Date().toISOString(),
     scope: config.scope,
+    warnings,
     repositories: repos.map(r => ({
       id: r.id, name: r.name, full_name: r.full_name, private: r.private, url: r.html_url,
       defaultBranch: r.default_branch, description: r.description,
@@ -456,19 +565,32 @@ async function fetchRepo(repo) {
   // to comfortably cover a full quarter without paginating forever on very
   // active monorepos. `state=all&sort=updated` means we still get the most
   // recent updates first even when the cap trims older ones.
-  const [commitsRaw, prsRaw, branchesRaw, deploymentsRaw, releasesRaw, runsRaw, issuesRaw, contributorsRaw, eventsRaw, tagsRaw] = await Promise.all([
-    ghPaginated(`/repos/${full}/commits?per_page=100`, { limit: 500 }).catch(() => []),
-    ghPaginated(`/repos/${full}/pulls?state=all&sort=updated&direction=desc`, { limit: 300 }).catch(() => []),
-    ghPaginated(`/repos/${full}/branches?per_page=100`, { limit: 100 }).catch(() => []),
-    ghPaginated(`/repos/${full}/deployments?per_page=100`, { limit: 300 }).catch(() => []),
-    ghPaginated(`/repos/${full}/releases?per_page=100`, { limit: 100 }).catch(() => []),
-    ghPaginated(`/repos/${full}/actions/runs?per_page=100`, { limit: 200 }).catch(() => []),
-    ghPaginated(`/repos/${full}/issues?state=all&sort=updated&direction=desc`, { limit: 300 }).catch(() => []),
-    ghPaginated(`/repos/${full}/contributors?per_page=100&anon=true`, { limit: 100 }).catch(() => []),
+  const endpoints = [
+    ['commits',      `/repos/${full}/commits?per_page=100`, 500],
+    ['pull requests', `/repos/${full}/pulls?state=all&sort=updated&direction=desc`, 300],
+    ['branches',     `/repos/${full}/branches?per_page=100`, 100],
+    ['deployments',  `/repos/${full}/deployments?per_page=100`, 300],
+    ['releases',     `/repos/${full}/releases?per_page=100`, 100],
+    ['workflow runs', `/repos/${full}/actions/runs?per_page=100`, 200],
+    ['issues',       `/repos/${full}/issues?state=all&sort=updated&direction=desc`, 300],
+    ['contributors', `/repos/${full}/contributors?per_page=100&anon=true`, 100],
     // GitHub caps public events at 300 total — no point pulling past that.
-    ghPaginated(`/repos/${full}/events?per_page=100`, { limit: 300 }).catch(() => []),
-    ghPaginated(`/repos/${full}/tags?per_page=100`, { limit: 100 }).catch(() => []),
-  ]);
+    ['events',       `/repos/${full}/events?per_page=100`, 300],
+    ['tags',         `/repos/${full}/tags?per_page=100`, 100],
+  ];
+  const [commitsRaw, prsRaw, branchesRaw, deploymentsRaw, releasesRaw, runsRaw, issuesRaw, contributorsRaw, eventsRaw, tagsRaw] =
+    await mapLimit(endpoints, 3, async ([label, path, limit]) => {
+      try {
+        return await ghPaginated(path, { limit });
+      } catch (err) {
+        // Still degrade to an empty list, because one dead endpoint should not
+        // blank the whole dashboard — but never silently. The bare
+        // `.catch(() => [])` this replaces is why a throttled token was
+        // indistinguishable from a repo where nothing had happened.
+        console.warn(`[github] ${full}: ${label} unavailable — ${err.message}`);
+        return [];
+      }
+    });
 
   const commits = commitsRaw.map(c => ({
     sha: c.sha, shortSha: c.sha.slice(0, 7),
@@ -482,8 +604,11 @@ async function fetchRepo(repo) {
     issues: issueKeys(c.commit.message),
   }));
 
-  // Deployment statuses need extra fetches — pull the latest status per deployment
-  const depWithStatus = await Promise.all(deploymentsRaw.map(async d => {
+  // Deployment statuses need extra fetches — pull the latest status per
+  // deployment, but a few at a time. Unbounded, this alone put up to 300
+  // requests in flight for one repo and was the single biggest contributor to
+  // tripping GitHub's secondary rate limit.
+  const depWithStatus = await mapLimit(deploymentsRaw, 4, async d => {
     let latest = { state: 'unknown', created_at: d.created_at };
     try {
       const statuses = await ghPaginated(`/repos/${full}/deployments/${d.id}/statuses?per_page=10`, { limit: 10 });
@@ -501,7 +626,7 @@ async function fetchRepo(repo) {
       buildNumber: d.payload?.build_number || null,
       repo: name, repoFull: full,
     };
-  }));
+  });
 
   // PRs: keep ALL fetched PRs in the output (previously .slice(0, 60) here
   // silently dropped older ones, so the Backlog column and 90-day analytics
@@ -510,7 +635,7 @@ async function fetchRepo(repo) {
   // up in the timeline & charts, they just won't have firstReviewAt/approval
   // counts populated (which don't matter for a 90-day-old merged PR).
   const REVIEW_CAP = 150;
-  const prs = await Promise.all(prsRaw.map(async (p, idx) => {
+  const prs = await mapLimit(prsRaw, 4, async (p, idx) => {
     let reviews = [];
     if (idx < REVIEW_CAP && (p.state === 'open' || p.merged_at)) {
       try { reviews = await ghPaginated(`/repos/${full}/pulls/${p.number}/reviews?per_page=30`, { limit: 30 }); } catch {}
@@ -539,7 +664,7 @@ async function fetchRepo(repo) {
       repo: name, repoFull: full,
       issues: issueKeys(p.title + ' ' + (p.body || '')),
     };
-  }));
+  });
 
   const branches = branchesRaw.map(b => ({
     name: b.name, protected: b.protected,
