@@ -58,7 +58,11 @@ jobs:
           fi
 
   infra:
-    name: ${{ github.event_name == 'pull_request' && 'What-if' || 'Deploy' }}
+    # Static on purpose. GitHub does not evaluate `name` for a skipped job, so
+    # a ${{ }} expression here renders as raw template text in the checks list
+    # every time the preflight gate skips this job. Which of the two modes ran
+    # is already visible from the What-if and Deploy steps.
+    name: Bicep
     runs-on: ubuntu-latest
     needs: preflight
     if: needs.preflight.outputs.configured == 'true'
