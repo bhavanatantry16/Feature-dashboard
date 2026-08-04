@@ -124,8 +124,17 @@ async function ghPaginated(pathAndQuery, { limit = 200 } = {}) {
       throw err;
     }
     const page = await res.json();
-    if (!Array.isArray(page)) break;
-    out.push(...page);
+    // Most list endpoints return a bare array, but a few wrap the list in an
+    // object: actions/runs → workflow_runs, check-runs → check_runs,
+    // actions/artifacts → artifacts, search → items. The old bare
+    // Array.isArray() check bailed on the first page of those, which is why
+    // workflow runs came back empty every single time and failedBuilds,
+    // successfulBuilds and buildSuccessRate were permanently zero.
+    const items = Array.isArray(page)
+      ? page
+      : (page?.workflow_runs || page?.check_runs || page?.artifacts || page?.items);
+    if (!Array.isArray(items)) break;
+    out.push(...items);
     const link = res.headers.get('link') || '';
     const m = link.match(/<([^>]+)>;\s*rel="next"/);
     url = m ? m[1] : null;
