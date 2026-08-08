@@ -4,6 +4,7 @@ import { showFeature, setSnapshot } from './drawer.js';
 import { renderRoadmap, openImport, closeImport, openAddFeature, closeAddFeature } from './roadmap.js';
 import { initTeam, refreshTeam } from './team.js';
 import { initBugs, refreshBugs } from './bugs.js';
+import { initCalendar, refreshCalendar } from './calendar.js';
 
 const state = {
   snapshot: null,
@@ -57,6 +58,7 @@ async function boot() {
   // template). Team is only initialised for Admin+ — for everyone else the
   // tab button stays hidden by renderSignedInHeader below.
   initBugs();
+  initCalendar();
   if (['Admin', 'Super Admin'].includes(me?.role)) {
     initTeam({ me, repositories: state.snapshot?.repositories || [], emailEnabled });
   }
@@ -95,7 +97,7 @@ function renderSignedInHeader(user) {
 }
 
 // ---------- Tabs ----------
-const VALID_TABS = ['overview','board','roadmap','bugs','team'];
+const VALID_TABS = ['overview','board','roadmap','bugs','calendar','team'];
 function setupTabs() {
   document.querySelectorAll('.tab[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => activateTab(btn.dataset.tab));
@@ -116,6 +118,7 @@ function activateTab(tab) {
   // Admin lands on it to avoid stale role/permission info after edits made
   // in another window.
   if (tab === 'bugs') refreshBugs();
+  if (tab === 'calendar') refreshCalendar();
   if (tab === 'team') refreshTeam();
 }
 
