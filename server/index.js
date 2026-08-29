@@ -9,6 +9,7 @@ import { apiRouter } from './routes/api.js';
 import { authRouter, adminRouter } from './routes/auth.js';
 import { bugsRouter } from './routes/bugs.js';
 import { inviteRouter, adminInviteRouter } from './routes/invites.js';
+import { availabilityRouter } from './routes/availability.js';
 import { sessionMiddleware, initPassport, requireAuth, requireRole } from './services/authService.js';
 import { ensureBootstrapAdmin } from './services/userStore.js';
 
@@ -54,6 +55,10 @@ app.use('/api/team', adminRouter);
 app.use('/api/team', adminInviteRouter);   // team alias
 // Bugs are gated per-route: view for any signed-in user, delete Admin+.
 app.use('/api/bugs', requireAuth, bugsRouter);
+
+// Availability: any authenticated user can manage their own records.
+// Admin/Super Admin can read all records via GET /api/availability.
+app.use('/api/availability', requireAuth, availabilityRouter);
 
 // Everything else under /api requires a signed-in user. A handful of
 // endpoints stay public because the login page uses them or they're

@@ -4,7 +4,7 @@ import { showFeature, setSnapshot } from './drawer.js';
 import { renderRoadmap, openImport, closeImport, openAddFeature, closeAddFeature } from './roadmap.js';
 import { initTeam, refreshTeam } from './team.js';
 import { initBugs, refreshBugs } from './bugs.js';
-import { initCalendar, refreshCalendar } from './calendar.js';
+import { initCalendar, refreshCalendar, setCalendarUser } from './calendar.js';
 
 const state = {
   snapshot: null,
@@ -48,6 +48,19 @@ async function boot() {
   } catch {
     // API unreachable — degrade gracefully, no login redirect loop.
   }
+
+  // ── Employee: lightweight boot — skip GitHub snapshot / roadmap / roster.
+  // Those endpoints serve admin-specific data and would be wasted fetches
+  // (or 403s) for Employees who only need Calendar and Bugs.
+  if (me?.role === 'Employee') {
+    initBugs();
+    initCalendar();
+    setCalendarUser(me);   // personalise calendar for the signed-in employee
+    activateTab('calendar'); // always open on Calendar
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   try {
     const cfg = await api.config();
     state.refreshSeconds = cfg.clientRefreshSeconds || 60;
@@ -59,6 +72,7 @@ async function boot() {
   // tab button stays hidden by renderSignedInHeader below.
   initBugs();
   initCalendar();
+  setCalendarUser(me); // pass user context for personalised calendar view
   if (['Admin', 'Super Admin'].includes(me?.role)) {
     initTeam({ me, repositories: state.snapshot?.repositories || [], emailEnabled });
   }
@@ -90,6 +104,26 @@ function renderSignedInHeader(user) {
     adminLink?.classList.remove('hidden');
     document.getElementById('tab-team-btn')?.classList.remove('hidden');
   }
+
+  // ── Employee: restrict navigation to Calendar and Bugs only ──────────────
+  // Hide every tab that Employees must not reach, and stamp the allowed set
+  // on <body> so activateTab() can enforce it without a separate closure.
+  if (user.role === 'Employee') {
+    const EMPLOYEE_TABS = new Set(['calendar', 'bugs']);
+    document.querySelectorAll('.tab[data-tab]').forEach(btn => {
+      if (!EMPLOYEE_TABS.has(btn.dataset.tab)) btn.style.display = 'none';
+    });
+    // Hide controls that only make sense in the full admin dashboard.
+    ['btn-refresh', 'btn-download-pdf', 'btn-playback', 'scope-label', 'refresh-cadence',
+     'header-admin-link', 'demo-banner'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    // Stamp allowed tabs on body for the guard in activateTab().
+    document.body.dataset.employeeTabs = [...EMPLOYEE_TABS].join(',');
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   signout?.addEventListener('click', async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     location.href = '/admin/login.html';
@@ -102,10 +136,29 @@ function setupTabs() {
   document.querySelectorAll('.tab[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => activateTab(btn.dataset.tab));
   });
-  const initial = (location.hash.replace('#','') || 'overview');
-  activateTab(VALID_TABS.includes(initial) ? initial : 'overview');
+  // Employee: always start on calendar regardless of the URL hash.
+  // For all other roles, honour the hash (or fall back to 'overview').
+  const hashTab = location.hash.replace('#','') || 'overview';
+  const initial = VALID_TABS.includes(hashTab) ? hashTab : 'overview';
+  // We defer the Employee tab clamp to after renderSignedInHeader has run
+  // (which stamps body.dataset.employeeTabs). setupTabs() is called before
+  // boot() resolves, so we can't read the role yet — activateTab itself
+  // handles the guard once renderSignedInHeader has set the attribute.
+  activateTab(initial);
 }
 function activateTab(tab) {
+  // ── Employee tab guard ───────────────────────────────────────────────────
+  // If employeeTabs is set on <body>, only those tabs are reachable.
+  // Any attempt to navigate elsewhere (including hash manipulation) is
+  // silently redirected to the calendar.
+  const employeeTabs = document.body.dataset.employeeTabs
+    ? new Set(document.body.dataset.employeeTabs.split(','))
+    : null;
+  if (employeeTabs && !employeeTabs.has(tab)) {
+    tab = 'calendar';
+    location.replace('#calendar'); // fix the URL bar without adding a history entry
+  }
+  // ────────────────────────────────────────────────────────────────────────
   state.currentTab = tab;
   document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'tab-' + tab));

@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Availability · Feature Tracker</title>
+  <link rel="icon"
+    href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    /* ── Base reset ─────────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      background: var(--bg, #f1f5f9);
+      color: var(--ink-900, #0f172a);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content {
+      flex: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      width: 100%;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .top-bar {
+      background: white;
+      border-bottom: 1px solid var(--surface-border, #e2e8f0);
+      box-shadow: 0 1px 3px rgba(16, 24, 40, .04);
+    }
+
+    .top-bar-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      color: white;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+      color: var(--ink-900, #0f172a);
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--ink-500, #64748b);
+      margin-top: 1px;
+    }
+
+    .spacer {
+      flex: 1;
+    }
+
+    .role-badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, .1);
+      color: #6366f1;
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 12px;
+      background: var(--surface-muted, #f8fafc);
+      border: 1px solid var(--surface-border, #e2e8f0);
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-900, #0f172a);
+    }
+
+    .signout-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 9px;
+      border: 1px solid var(--surface-border, #e2e8f0);
+      background: white;
+      color: var(--ink-600, #475569);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+
+    .signout-btn:hover {
+      background: var(--surface-muted, #f8fafc);
+      border-color: #cbd5e1;
+    }
+
+    /* ── Hero profile card ──────────────────────────────────── */
+    .profile-card {
+      background: white;
+      border: 1px solid var(--surface-border, #e2e8f0);
+      border-radius: 20px;
+      box-shadow: 0 4px 16px -4px rgba(16, 24, 40, .08);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .profile-banner {
+      height: 80px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+      position: relative;
+    }
+
+    .profile-banner::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='20' fill='rgba(255,255,255,.04)'/%3E%3C/svg%3E") repeat;
+    }
+
+    .profile-body {
+      padding: 0 28px 24px;
+      position: relative;
+    }
+
+    .profile-avatar-wrap {
+      margin-top: -32px;
+      margin-bottom: 12px;
+    }
+
+    .profile-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      border: 3px solid white;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, .3);
+    }
+
+    .profile-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink-900, #0f172a);
+      letter-spacing: -.02em;
+    }
+
+    .profile-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .profile-email {
+      font-size: 13px;
+      color: var(--ink-500, #64748b);
+    }
+
+    .profile-dept {
+      font-size: 12px;
+      color: var(--ink-400, #94a3b8);
+    }
+
+    .dot-sep {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--ink-300, #cbd5e1);
+    }
+
+    /* ── Two-column grid ────────────────────────────────────── */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media(max-width:680px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Card wrapper ───────────────────────────────────────── */
+    .card {
+      background: white;
+      border: 1px solid var(--surface-border, #e2e8f0);
+      border-radius: 20px;
+      box-shadow: 0 4px 16px -4px rgba(16, 24, 40, .08);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--surface-border, #e2e8f0);
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink-900, #0f172a);
+    }
+
+    .card-sub {
+      font-size: 11px;
+      color: var(--ink-500, #64748b);
+      margin-top: 1px;
+    }
+
+    .card-body {
+      padding: 20px 24px;
+    }
+
+    /* ── Mark Availability form ─────────────────────────────── */
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-700, #334155);
+      margin-bottom: 6px;
+    }
+
+    .date-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--surface-border, #e2e8f0);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--ink-900, #0f172a);
+      background: white;
+      outline: none;
+      font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .date-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .15);
+    }
+
+    /* Status toggle buttons */
+    .status-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .status-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 2px solid var(--surface-border, #e2e8f0);
+      background: var(--surface-muted, #f8fafc);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-600, #475569);
+      transition: all .15s;
+      user-select: none;
+    }
+
+    .status-btn:hover {
+      border-color: #6366f1;
+      color: #6366f1;
+      background: rgba(99, 102, 241, .04);
+    }
+
+    .status-btn.selected-available {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, .08);
+      color: #059669;
+    }
+
+    .status-btn.selected-leave {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, .08);
+      color: #d97706;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .save-btn {
+      width: 100%;
+      margin-top: 16px;
+      padding: 11px 20px;
+      border-radius: 11px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, .3);
+      transition: opacity .15s, transform .1s;
+    }
+
+    .save-btn:hover {
+      opacity: .9;
+      transform: translateY(-1px);
+    }
+
+    .save-btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .form-msg {
+      margin-top: 10px;
+      padding: 9px 14px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 500;
+      display: none;
+    }
+
+    .form-msg.error {
+      background: rgba(239, 68, 68, .08);
+      border: 1px solid rgba(239, 68, 68, .2);
+      color: #dc2626;
+    }
+
+    .form-msg.success {
+      background: rgba(16, 185, 129, .08);
+      border: 1px solid rgba(16, 185, 129, .2);
+      color: #059669;
+    }
+
+    /* ── Availability log ───────────────────────────────────── */
+    .avail-empty {
+      text-align: center;
+      padding: 28px 16px;
+      font-size: 13px;
+      color: var(--ink-400, #94a3b8);
+    }
+
+    .avail-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--surface-border, #e2e8f0);
+    }
+
+    .avail-row:last-child {
+      border-bottom: none;
+    }
+
+    .avail-date {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-700, #334155);
+      min-width: 110px;
+      flex-shrink: 0;
+    }
+
+    .avail-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+
+    .avail-badge.available {
+      background: rgba(16, 185, 129, .12);
+      color: #059669;
+    }
+
+    .avail-badge.leave {
+      background: rgba(245, 158, 11, .12);
+      color: #d97706;
+    }
+
+    .avail-delete {
+      margin-left: auto;
+      padding: 4px 10px;
+      border-radius: 7px;
+      border: 1px solid var(--surface-border, #e2e8f0);
+      background: white;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-500, #64748b);
+      cursor: pointer;
+      transition: background .12s, border-color .12s, color .12s;
+    }
+
+    .avail-delete:hover {
+      background: rgba(239, 68, 68, .06);
+      border-color: rgba(239, 68, 68, .3);
+      color: #dc2626;
+    }
+
+    /* ── Toast ──────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 10px 20px;
+      border-radius: 12px;
+      background: #0f172a;
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .25);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Loading shimmer ────────────────────────────────────── */
+    .shimmer {
+      height: 14px;
+      border-radius: 7px;
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s ease infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 100% 0
+      }
+
+      100% {
+        background-position: -100% 0
+      }
+    }
+
+    /* ── Utility ────────────────────────────────────────────── */
+    .hidden {
+      display: none !important;
+    }
+
+    .mt-4 {
+      margin-top: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+
+    <!-- ── Top bar ── -->
+    <div class="top-bar">
+      <div class="top-bar-inner">
+        <div class="brand">
+          <div class="brand-mark">▨</div>
+          <div>
+            <div class="brand-name">Feature Tracker</div>
+            <div class="brand-sub">Employee Portal</div>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <span class="role-badge" id="header-role">Employee</span>
+        <div class="user-pill">
+          <div class="user-avatar" id="header-avatar">—</div>
+          <span class="user-name" id="header-name">Loading…</span>
+        </div>
+        <button class="signout-btn" id="btn-signout">
+          <i data-lucide="log-out" style="width:14px;height:14px;"></i>
+          Sign out
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Main content ── -->
+    <main class="content">
+
+      <!-- Profile card -->
+      <div class="profile-card" id="profile-card">
+        <div class="profile-banner"></div>
+        <div class="profile-body">
+          <div class="profile-avatar-wrap">
+            <div class="profile-avatar" id="profile-avatar">—</div>
+          </div>
+          <div class="profile-name" id="profile-name">Loading…</div>
+          <div class="profile-meta">
+            <span class="profile-email" id="profile-email">—</span>
+            <span class="dot-sep" id="dept-sep"></span>
+            <span class="profile-dept" id="profile-dept"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two-column: mark availability + log -->
+      <div class="grid-2">
+
+        <!-- ── Mark Availability ── -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+              <i data-lucide="calendar-check" style="width:16px;height:16px;color:white;"></i>
+            </div>
+            <div>
+              <div class="card-title">Mark Availability</div>
+              <div class="card-sub">Select a date and set your status</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <label class="field-label" for="avail-date">Date</label>
+            <input type="date" id="avail-date" class="date-input" />
+
+            <div style="margin-top:16px;">
+              <span class="field-label" style="display:block;margin-bottom:8px;">Status</span>
+              <div class="status-group">
+                <button class="status-btn" id="btn-available" data-status="available">
+                  <span class="status-dot" style="background:#10b981;"></span>
+                  Available
+                </button>
+                <button class="status-btn" id="btn-leave" data-status="leave">
+                  <span class="status-dot" style="background:#f59e0b;"></span>
+                  On Leave
+                </button>
+              </div>
+            </div>
+
+            <button class="save-btn" id="btn-save" disabled>
+              <i data-lucide="save" style="width:14px;height:14px;"></i>
+              Save Availability
+            </button>
+
+            <div class="form-msg" id="form-msg"></div>
+          </div>
+        </div>
+
+        <!-- ── My Availability Log ── -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-icon" style="background:linear-gradient(135deg,#0ea5e9,#6366f1);">
+              <i data-lucide="list-checks" style="width:16px;height:16px;color:white;"></i>
+            </div>
+            <div>
+              <div class="card-title">My Availability Log</div>
+              <div class="card-sub">Your submitted availability records</div>
+            </div>
+          </div>
+          <div class="card-body" id="log-body">
+            <div class="avail-empty">Loading records…</div>
+          </div>
+        </div>
+
+      </div><!-- /grid-2 -->
+
+    </main>
+
+  </div><!-- /shell -->
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    /* ── Helpers ────────────────────────────────────────────── */
+    const $ = id => document.getElementById(id);
+
+    function showToast(msg, ms = 2800) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), ms);
+    }
+
+    function initials(name = '') {
+      return name.trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '?';
+    }
+
+    function fmtDate(iso) {
+      // Format YYYY-MM-DD as "28 Aug 2026" without depending on locale quirks
+      const [y, m, d] = iso.split('-');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+    }
+
+    /* ── State ──────────────────────────────────────────────── */
+    let currentUser = null;
+    let selectedStatus = null;
+
+    /* ── Auth gate ──────────────────────────────────────────── */
+    async function boot() {
+      try {
+        const resp = await fetch('/api/auth/me').then(r => r.json());
+
+        if (!resp.authenticated) {
+          location.href = '/admin/login.html';
+          return;
+        }
+
+        // Non-employees who land here (e.g. admin types URL directly) go back to admin.
+        if (resp.user.role !== 'Employee') {
+          location.href = '/';
+          return;
+        }
+
+        currentUser = resp.user;
+        renderProfile(currentUser);
+        wireSignout();
+        await loadLog();
+      } catch {
+        // API unreachable — redirect to login so the user can try again.
+        location.href = '/admin/login.html';
+      }
+    }
+
+    /* ── Profile ────────────────────────────────────────────── */
+    function renderProfile(user) {
+      const name = user.name || user.email || 'Employee';
+      const email = user.email || '';
+      const dept = user.department || '';
+      const ini = initials(name);
+
+      // Header
+      $('header-name').textContent = name;
+      $('header-avatar').textContent = ini;
+
+      // Profile card
+      $('profile-avatar').textContent = ini;
+      $('profile-name').textContent = name;
+      $('profile-email').textContent = email;
+
+      if (dept) {
+        $('profile-dept').textContent = dept;
+        $('dept-sep').style.display = 'block';
+      }
+    }
+
+    /* ── Sign out ───────────────────────────────────────────── */
+    function wireSignout() {
+      $('btn-signout').addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        location.href = '/admin/login.html';
+      });
+    }
+
+    /* ── Status toggle ──────────────────────────────────────── */
+    ['btn-available', 'btn-leave'].forEach(id => {
+      $(id).addEventListener('click', () => {
+        selectedStatus = $(id).dataset.status;
+        // Reset both
+        $('btn-available').className = 'status-btn';
+        $('btn-leave').className = 'status-btn';
+        // Highlight selected
+        if (selectedStatus === 'available') $('btn-available').classList.add('selected-available');
+        else $('btn-leave').classList.add('selected-leave');
+        updateSaveButton();
+      });
+    });
+
+    $('avail-date').addEventListener('change', updateSaveButton);
+
+    function updateSaveButton() {
+      const hasDate = Boolean($('avail-date').value);
+      const hasStatus = Boolean(selectedStatus);
+      $('btn-save').disabled = !(hasDate && hasStatus);
+    }
+
+    // Pre-fill today's date
+    const today = new Date();
+    $('avail-date').value = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-');
+
+    /* ── Save availability ──────────────────────────────────── */
+    $('btn-save').addEventListener('click', async () => {
+      const date = $('avail-date').value;
+      const status = selectedStatus;
+      const msgEl = $('form-msg');
+
+      msgEl.style.display = 'none';
+      $('btn-save').disabled = true;
+      $('btn-save').textContent = 'Saving…';
+
+      try {
+        const r = await fetch('/api/availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ date, status }),
+        });
+        const data = await r.json();
+
+        if (!r.ok) throw new Error(data.error || 'Save failed');
+
+        msgEl.textContent = `Saved — ${status === 'available' ? 'Available' : 'On Leave'} for ${fmtDate(date)}`;
+        msgEl.className = 'form-msg success';
+        msgEl.style.display = 'block';
+        showToast('Availability saved ✓');
+        await loadLog();
+      } catch (err) {
+        msgEl.textContent = err.message;
+        msgEl.className = 'form-msg error';
+        msgEl.style.display = 'block';
+      } finally {
+        $('btn-save').innerHTML = '<i data-lucide="save" style="width:14px;height:14px;"></i> Save Availability';
+        window.lucide?.createIcons();
+        updateSaveButton();
+      }
+    });
+
+    /* ── Load & render log ──────────────────────────────────── */
+    async function loadLog() {
+      const logEl = $('log-body');
+      try {
+        const resp = await fetch('/api/availability', { credentials: 'same-origin' });
+        const data = await resp.json();
+        const records = (data.records || [])
+          .slice()
+          .sort((a, b) => b.date.localeCompare(a.date)); // newest first
+
+        if (!records.length) {
+          logEl.innerHTML = `
+          <div class="avail-empty">
+            <i data-lucide="calendar-off" style="width:24px;height:24px;margin-bottom:8px;color:#cbd5e1;display:block;margin-left:auto;margin-right:auto;"></i>
+            No availability records yet.<br>
+            <span style="font-size:12px;">Use the form on the left to add your first entry.</span>
+          </div>`;
+          window.lucide?.createIcons();
+          return;
+        }
+
+        logEl.innerHTML = records.map(r => `
+        <div class="avail-row" data-date="${r.date}">
+          <span class="avail-date">${fmtDate(r.date)}</span>
+          <span class="avail-badge ${r.status}">
+            ${r.status === 'available' ? '● Available' : '● On Leave'}
+          </span>
+          <button class="avail-delete" data-delete="${r.date}" title="Remove this entry">
+            Remove
+          </button>
+        </div>`).join('');
+
+        // Wire delete buttons
+        logEl.querySelectorAll('[data-delete]').forEach(btn => {
+          btn.addEventListener('click', () => deleteRecord(btn.dataset.delete));
+        });
+
+        window.lucide?.createIcons();
+      } catch {
+        logEl.innerHTML = `<div class="avail-empty" style="color:#dc2626;">Could not load records.</div>`;
+      }
+    }
+
+    /* ── Delete a record ────────────────────────────────────── */
+    async function deleteRecord(date) {
+      try {
+        const r = await fetch(`/api/availability/${encodeURIComponent(date)}`, {
+          method: 'DELETE',
+          credentials: 'same-origin',
+        });
+        if (!r.ok) {
+          const d = await r.json();
+          throw new Error(d.error || 'Delete failed');
+        }
+        showToast(`Removed entry for ${fmtDate(date)}`);
+        await loadLog();
+      } catch (err) {
+        showToast(`Error: ${err.message}`);
+      }
+    }
+
+    /* ── Boot ───────────────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      window.lucide?.createIcons();
+      boot();
+    });
+  </script>
+</body>
+
+</html>

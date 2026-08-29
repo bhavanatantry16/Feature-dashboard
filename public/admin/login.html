@@ -106,6 +106,8 @@
         // If the account must change its password, land on the admin
         // dashboard which prompts (or a dedicated change-password page in
         // future). For now, admin/index.html handles the prompt.
+        // All roles land on the main app. For Employees, app.js boot()
+        // immediately hides restricted tabs and forces the Calendar tab open.
         location.href = data.user.mustChangePassword ? '/admin/index.html#change-password' : '/';
       } catch (err) {
         errEl.textContent = err.message;
