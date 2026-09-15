@@ -17,7 +17,7 @@
       }
     }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>
@@ -34,6 +34,7 @@
   <!-- Header -->
   <header class="header">
     <div class="mx-auto max-w-[1500px] px-6 py-4 flex flex-wrap items-center gap-3">
+
       <div class="flex items-center gap-3 min-w-0">
         <div class="brand-mark">▨</div>
         <div class="leading-tight">
@@ -52,28 +53,37 @@
             class="w-4 h-4"></i>Team</button>
       </nav>
 
-      <div class="ml-auto flex items-center gap-2">
-        <button id="btn-download-pdf" class="btn-secondary text-xs"
-          title="Download the current Overview as PDF (uses your browser's Save as PDF)">
-          <i data-lucide="file-down" class="w-3.5 h-3.5"></i>Download PDF
-        </button>
-        <button id="btn-playback" class="btn-primary text-xs" title="30-second executive recap">
-          <i data-lucide="play" class="w-3.5 h-3.5"></i>Executive Playback
-        </button>
-        <span id="last-synced-wrap" class="text-[11px] text-ink-500 hidden md:inline">Updated <span
-            id="last-synced">—</span></span>
-        <button id="btn-refresh" class="icon-btn" title="Refresh"><i data-lucide="refresh-cw"
-            class="w-4 h-4"></i></button>
-        <button id="btn-theme" class="icon-btn" title="Theme"><i data-lucide="moon" class="w-4 h-4"></i></button>
-        <a href="/config.html" class="icon-btn" title="Settings"><i data-lucide="settings" class="w-4 h-4"></i></a>
-        <a href="#team" id="header-admin-link" class="icon-btn hidden" title="Team Management"><i data-lucide="users"
-            class="w-4 h-4"></i></a>
-        <span id="header-me" class="header-me hidden">
-          <span id="header-me-name">—</span>
-          <span id="header-me-role" class="header-me-role">—</span>
-        </span>
-        <button id="btn-signout" class="icon-btn hidden" title="Sign out"><i data-lucide="log-out"
-            class="w-4 h-4"></i></button>
+      <div class="nav-controls ml-auto flex items-center gap-2">
+        <!-- Group 1: primary actions -->
+        <div class="nav-grp nav-grp-actions">
+          <button id="btn-download-pdf" class="btn-secondary text-xs"
+            title="Download the current Overview as PDF (uses your browser's Save as PDF)">
+            <i data-lucide="file-down" class="w-3.5 h-3.5"></i>Download PDF
+          </button>
+          <button id="btn-playback" class="btn-primary text-xs" title="30-second executive recap">
+            <i data-lucide="play" class="w-3.5 h-3.5"></i>Executive Playback
+          </button>
+        </div>
+        <!-- Group 2: tool icon buttons -->
+        <div class="nav-grp nav-grp-tools">
+          <span id="last-synced-wrap" class="text-[11px] text-ink-500 hidden md:inline">Updated <span
+              id="last-synced">—</span></span>
+          <button id="btn-refresh" class="icon-btn" title="Refresh"><i data-lucide="refresh-cw"
+              class="w-4 h-4"></i></button>
+          <button id="btn-theme" class="icon-btn" title="Theme"><i data-lucide="moon" class="w-4 h-4"></i></button>
+          <a href="/config.html" class="icon-btn" title="Settings"><i data-lucide="settings" class="w-4 h-4"></i></a>
+          <a href="#team" id="header-admin-link" class="icon-btn hidden" title="Team Management"><i data-lucide="users"
+              class="w-4 h-4"></i></a>
+        </div>
+        <!-- Group 3: user identity + logout -->
+        <div class="nav-grp nav-grp-user">
+          <span id="header-me" class="header-me hidden">
+            <span id="header-me-name">—</span>
+            <span id="header-me-role" class="header-me-role">—</span>
+          </span>
+          <button id="btn-signout" class="icon-btn hidden" title="Sign out"><i data-lucide="log-out"
+              class="w-4 h-4"></i></button>
+        </div>
       </div>
     </div>
   </header>

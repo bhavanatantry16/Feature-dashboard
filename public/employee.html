@@ -7,7 +7,7 @@
   <title>My Availability · Feature Tracker</title>
   <link rel="icon"
     href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
@@ -49,9 +49,10 @@
 
     /* ── Header ─────────────────────────────────────────────── */
     .top-bar {
-      background: white;
-      border-bottom: 1px solid var(--surface-border, #e2e8f0);
-      box-shadow: 0 1px 3px rgba(16, 24, 40, .04);
+      background: var(--surface, #ffffff);
+      border-bottom: 1px solid var(--surface-border, #dde3ed);
+      box-shadow: 0 1px 0 var(--surface-border, #dde3ed);
+      position: sticky; top: 0; z-index: 30;
     }
 
     .top-bar-inner {
@@ -72,14 +73,15 @@
     .brand-mark {
       width: 36px;
       height: 36px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 8px;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6, #60a5fa);
       display: grid;
       place-items: center;
       font-size: 18px;
       color: white;
       font-weight: 700;
       flex-shrink: 0;
+      box-shadow: 0 3px 12px -3px rgba(59,130,246,.4);
     }
 
     .brand-name {
@@ -100,14 +102,15 @@
     }
 
     .role-badge {
-      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
       font-weight: 700;
-      letter-spacing: .05em;
+      letter-spacing: .08em;
       text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(99, 102, 241, .1);
-      color: #6366f1;
+      padding: 3px 9px;
+      border-radius: 4px;
+      background: rgba(59,130,246,.1);
+      color: #3b82f6;
     }
 
     .user-pill {
@@ -124,11 +127,12 @@
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
       display: grid;
       place-items: center;
       flex-shrink: 0;
-      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
       font-weight: 700;
       color: white;
     }
@@ -143,35 +147,37 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 7px 14px;
-      border-radius: 9px;
-      border: 1px solid var(--surface-border, #e2e8f0);
-      background: white;
-      color: var(--ink-600, #475569);
-      font-size: 13px;
-      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--surface-border, #dde3ed);
+      background: transparent;
+      color: var(--ink-700, #2d4a6e);
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
       transition: background .12s, border-color .12s;
+      font-family: inherit;
     }
 
     .signout-btn:hover {
-      background: var(--surface-muted, #f8fafc);
-      border-color: #cbd5e1;
+      background: var(--surface-muted, #f5f7fa);
+      border-color: #3b82f6;
+      color: var(--ink-900, #0a1628);
     }
 
     /* ── Hero profile card ──────────────────────────────────── */
     .profile-card {
-      background: white;
-      border: 1px solid var(--surface-border, #e2e8f0);
-      border-radius: 20px;
-      box-shadow: 0 4px 16px -4px rgba(16, 24, 40, .08);
+      background: var(--surface, #ffffff);
+      border: 1px solid var(--surface-border, #dde3ed);
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(10,22,40,.08), 0 1px 2px rgba(10,22,40,.04);
       overflow: hidden;
       margin-bottom: 24px;
     }
 
     .profile-banner {
-      height: 80px;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+      height: 100px;
+      background: linear-gradient(135deg, #0a1e42 0%, #1d4ed8 55%, #3b82f6 100%);
       position: relative;
     }
 
@@ -179,7 +185,10 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='20' fill='rgba(255,255,255,.04)'/%3E%3C/svg%3E") repeat;
+      background-image:
+        linear-gradient(rgba(59,130,246,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,.08) 1px, transparent 1px);
+      background-size: 28px 28px;
     }
 
     .profile-body {
