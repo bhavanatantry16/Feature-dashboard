@@ -1,49 +1,20 @@
 [
   {
-    "id": "d0d2912c-20bd-46af-8ae5-8dbaa8cacbd3",
+    "id": "0a45477c-702e-48bd-ba03-839bac46cf90",
     "userId": "e8c2c41d-b5db-4040-9d84-f07886bdb26a",
     "employeeName": "Test Employee",
-    "date": "2026-08-28",
-    "status": "leave",
-    "createdAt": "2026-08-29T17:01:23.237Z",
-    "updatedAt": "2026-08-29T17:19:51.585Z",
-    "leaveStart": "2026-08-29",
-    "leaveEnd": "2026-08-31"
-  },
-  {
-    "id": "661164df-3c2b-4ed4-9efe-a850c50d8354",
-    "userId": "e8c2c41d-b5db-4040-9d84-f07886bdb26a",
-    "employeeName": "Test Employee",
-    "date": "2026-08-29",
+    "date": "2026-09-26",
     "status": "available",
-    "createdAt": "2026-08-29T17:20:12.407Z",
-    "updatedAt": "2026-08-29T17:20:12.407Z"
+    "createdAt": "2026-09-18T08:55:58.719Z",
+    "updatedAt": "2026-09-18T08:55:58.719Z"
   },
   {
-    "id": "645caed1-f327-4545-8373-05505340e664",
+    "id": "eefde54f-3665-4af5-a376-dc0558c4abcd",
     "userId": "e8c2c41d-b5db-4040-9d84-f07886bdb26a",
     "employeeName": "Test Employee",
-    "date": "2026-09-07",
-    "status": "leave",
-    "createdAt": "2026-09-03T10:59:52.257Z",
-    "updatedAt": "2026-09-03T10:59:52.257Z"
-  },
-  {
-    "id": "ead9f584-9234-4c5e-9d7f-56ccff9a1b7b",
-    "userId": "e8c2c41d-b5db-4040-9d84-f07886bdb26a",
-    "employeeName": "Test Employee",
-    "date": "2026-09-09",
+    "date": "2026-09-27",
     "status": "available",
-    "createdAt": "2026-09-09T06:41:17.025Z",
-    "updatedAt": "2026-09-09T06:41:27.727Z"
-  },
-  {
-    "id": "dcb7c15d-9015-4d1f-b6d7-94f53633ab43",
-    "userId": "e8c2c41d-b5db-4040-9d84-f07886bdb26a",
-    "employeeName": "Test Employee",
-    "date": "2026-09-10",
-    "status": "leave",
-    "createdAt": "2026-09-09T06:41:33.258Z",
-    "updatedAt": "2026-09-09T06:41:33.258Z"
+    "createdAt": "2026-09-24T06:23:00.232Z",
+    "updatedAt": "2026-09-24T06:23:00.232Z"
   }
 ]

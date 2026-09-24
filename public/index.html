@@ -17,7 +17,9 @@
       }
     }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>
@@ -49,6 +51,9 @@
         <button class="tab" data-tab="roadmap"><i data-lucide="map" class="w-4 h-4"></i>Roadmap</button>
         <button class="tab" data-tab="bugs"><i data-lucide="bug" class="w-4 h-4"></i>Bugs</button>
         <button class="tab" data-tab="calendar"><i data-lucide="calendar-days" class="w-4 h-4"></i>Calendar</button>
+        <button class="tab" data-tab="executive-report">
+          <i data-lucide="file-text" class="w-4 h-4"></i>Executive Report
+        </button>
         <button class="tab hidden" data-tab="team" id="tab-team-btn"><i data-lucide="users"
             class="w-4 h-4"></i>Team</button>
       </nav>
@@ -333,6 +338,31 @@
         </div>
       </div>
     </section>
+
+    <!-- =========================== EXECUTIVE REPORT =========================== -->
+    <section id="tab-executive-report" class="tab-panel hidden space-y-6">
+      <div>
+        <h2 class="text-xl font-semibold tracking-tight">Executive Report</h2>
+        <p class="text-sm text-ink-500">Engineering delivery and performance at a glance.</p>
+      </div>
+
+      <!-- Section 1: Executive Overview -->
+      <div id="er-overview">
+        <!-- KPI grid -->
+        <div class="section-head">
+          <h3>Executive Overview</h3>
+          <span class="section-sub">Key engineering metrics</span>
+        </div>
+        <div id="er-kpi-grid" class="progress-grid"></div>
+
+        <!-- Delivery Summary -->
+        <div class="section-head" style="margin-top:24px">
+          <h3>Delivery Summary</h3>
+          <span class="section-sub">Auto-generated from live data</span>
+        </div>
+        <div id="er-delivery-summary" class="summary-card"></div>
+      </div>
+    </section>
   </main>
 
   <footer class="mx-auto max-w-[1500px] px-6 py-8 text-xs text-ink-500">
@@ -574,11 +604,10 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
             <h3>Assigned Tasks / Features</h3>
             <span>Select Roadmap items to assign to this employee</span>
           </div>
-          <input id="ud-tasks-search" type="search" class="admin-input"
-                 placeholder="Search tasks…"
-                 style="margin-bottom:8px;font-size:12px;" />
+          <input id="ud-tasks-search" type="search" class="admin-input" placeholder="Search tasks…"
+            style="margin-bottom:8px;font-size:12px;" />
           <div id="ud-tasks-list"
-               style="max-height:200px;overflow-y:auto;border:1px solid var(--surface-border);border-radius:8px;padding:6px 8px;font-size:12px;background:var(--surface-muted,#f8fafc);">
+            style="max-height:200px;overflow-y:auto;border:1px solid var(--surface-border);border-radius:8px;padding:6px 8px;font-size:12px;background:var(--surface-muted,#f8fafc);">
             <span style="color:var(--ink-400);">Loading tasks…</span>
           </div>
           <div id="ud-tasks-count" style="font-size:11px;color:var(--ink-400);margin-top:4px;"></div>

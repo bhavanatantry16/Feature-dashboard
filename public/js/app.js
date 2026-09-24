@@ -65,7 +65,7 @@ async function boot() {
     const cfg = await api.config();
     state.refreshSeconds = cfg.clientRefreshSeconds || 60;
     document.getElementById('refresh-cadence').textContent = state.refreshSeconds;
-  } catch {}
+  } catch { }
   await Promise.all([refreshSnapshot(false), refreshRoadmap(), refreshRoster()]);
   // Bugs is available to every signed-in user (view.bugs is on every role
   // template). Team is only initialised for Admin+ — for everyone else the
@@ -115,10 +115,10 @@ function renderSignedInHeader(user) {
     });
     // Hide controls that only make sense in the full admin dashboard.
     ['btn-refresh', 'btn-download-pdf', 'btn-playback', 'scope-label', 'refresh-cadence',
-     'header-admin-link', 'demo-banner'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
-    });
+      'header-admin-link', 'demo-banner'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
     // Stamp allowed tabs on body for the guard in activateTab().
     document.body.dataset.employeeTabs = [...EMPLOYEE_TABS].join(',');
   }
@@ -131,14 +131,14 @@ function renderSignedInHeader(user) {
 }
 
 // ---------- Tabs ----------
-const VALID_TABS = ['overview','board','roadmap','bugs','calendar','team'];
+const VALID_TABS = ['overview', 'board', 'roadmap', 'bugs', 'calendar', 'executive-report', 'team'];
 function setupTabs() {
   document.querySelectorAll('.tab[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => activateTab(btn.dataset.tab));
   });
   // Employee: always start on calendar regardless of the URL hash.
   // For all other roles, honour the hash (or fall back to 'overview').
-  const hashTab = location.hash.replace('#','') || 'overview';
+  const hashTab = location.hash.replace('#', '') || 'overview';
   const initial = VALID_TABS.includes(hashTab) ? hashTab : 'overview';
   // We defer the Employee tab clamp to after renderSignedInHeader has run
   // (which stamps body.dataset.employeeTabs). setupTabs() is called before
@@ -190,14 +190,14 @@ async function refreshSnapshot(force) {
   } catch (e) { console.error('snapshot failed', e); }
 }
 async function refreshRoadmap() {
-  try { const r = await fetch('/api/roadmap').then(r => r.json()); state.roadmap = r.items || []; renderRoadmapCard(); } catch {}
+  try { const r = await fetch('/api/roadmap').then(r => r.json()); state.roadmap = r.items || []; renderRoadmapCard(); } catch { }
 }
 async function refreshRoster() {
   try {
     const r = await fetch('/api/roster').then(r => r.json());
     state.roster = Array.isArray(r.roster) ? r.roster : [];
     if (state.snapshot) populateFilters(state.snapshot);
-  } catch {}
+  } catch { }
 }
 
 function updateLastSynced(ts) {
@@ -307,7 +307,7 @@ function fillOptions(id, entries) {
 }
 
 function bucketFor(f) {
-  if (['Testing','UAT','Code Review'].includes(f.stage)) return 'Testing';
+  if (['Testing', 'UAT', 'Code Review'].includes(f.stage)) return 'Testing';
   if (f.stage === 'Production') return 'Production';
   if (f.stage === 'Development') return 'Development';
   return 'Backlog';
@@ -319,7 +319,7 @@ function applyFilters(features) {
   const q = search.toLowerCase();
   const chips = state.chips;
   const me = state.me.toLowerCase();
-  const todayMs = new Date(); todayMs.setHours(0,0,0,0);
+  const todayMs = new Date(); todayMs.setHours(0, 0, 0, 0);
   return features.filter(f => {
     const display = (f.displayName || humanize(f.title)).toLowerCase();
     if (repo && f.repoFull !== repo) return false;
@@ -327,7 +327,7 @@ function applyFilters(features) {
     if (sprint && f.milestone !== sprint) return false;
     if (q && !display.includes(q)) return false;
     if (chips.has('blocked') && !f.blocked) return false;
-    if (chips.has('qa') && !['Testing','UAT'].includes(f.stage)) return false;
+    if (chips.has('qa') && !['Testing', 'UAT'].includes(f.stage)) return false;
     if (chips.has('ready') && !(f.readinessScore >= 80 && f.stage !== 'Production')) return false;
     if (chips.has('today') && !(f.updated_at && new Date(f.updated_at).getTime() >= todayMs.getTime())) return false;
     if (chips.has('mine') && me && ![f.owner, ...(f.developers || []), f.qaOwner, f.reviewer].map(x => (x || '').toLowerCase()).includes(me)) return false;
@@ -346,7 +346,55 @@ function renderAll() {
   renderRoadmapCard();
   renderBugs();                                     // async — fetches /api/bugs on its own
   renderPromotionQueue(s);
+  renderExecutiveReport(s);
   window.lucide?.createIcons();
+}
+
+// ---------- Executive Report — Section 1: Executive Overview ----------
+function renderExecutiveReport(s) {
+  const kpiGrid = document.getElementById('er-kpi-grid');
+  const summaryCont = document.getElementById('er-delivery-summary');
+  if (!kpiGrid || !summaryCont) return;
+
+  const k = s.kpis || {};
+
+  // Build success rate: if the snapshot supplies it, use it; otherwise compute
+  // from successfulBuilds / (successfulBuilds + failedBuilds).
+  const totalBuilds = (k.successfulBuilds ?? 0) + (k.failedBuilds ?? 0);
+  const buildSuccessRate = k.buildSuccessRate != null
+    ? k.buildSuccessRate
+    : (totalBuilds > 0 ? Math.round((k.successfulBuilds / totalBuilds) * 100) : 0);
+
+  // Commits: prefer commitsWeek (7-day window) if available, fall back to commitsToday.
+  const commitsValue = k.commitsWeek != null ? k.commitsWeek : (k.commitsToday ?? 0);
+  const commitsLabel = k.commitsWeek != null ? 'Commits (7 days)' : "Today's Commits";
+
+  const cells = [
+    { n: k.activeDevelopers  ?? 0, l: 'Active Developers',    icon: 'users',           bg: 'bg-violet-500' },
+    { n: k.openPRs           ?? 0, l: 'Open Pull Requests',   icon: 'git-pull-request', bg: 'bg-purple-500' },
+    { n: k.pendingReviews    ?? 0, l: 'Pending Reviews',      icon: 'clipboard-check',  bg: 'bg-amber-500'  },
+    { n: commitsValue,             l: commitsLabel,            icon: 'git-commit-horizontal', bg: 'bg-emerald-500' },
+    { n: `${buildSuccessRate}%`,   l: 'Build Success Rate',   icon: 'shield-check',     bg: 'bg-teal-500'   },
+    { n: k.prodReleasesWeek  ?? 0, l: 'Releases (7 days)',    icon: 'rocket',           bg: 'bg-sky-500'    },
+  ];
+
+  kpiGrid.innerHTML = cells.map(c => `
+    <div class="tp-cell">
+      <div class="tp-icon ${c.bg}"><i data-lucide="${c.icon}" class="w-3.5 h-3.5"></i></div>
+      <div class="tp-num">${c.n}</div>
+      <div class="tp-lbl">${c.l}</div>
+    </div>`).join('');
+
+  // Delivery Summary: use weeklySummary bullets when available, fall back to smart insights.
+  const ws = s.weeklySummary || {};
+  const bullets = (ws.bullets && ws.bullets.length)
+    ? ws.bullets
+    : (s.insights || []).slice(0, 5);
+  const period = ws.period || 'This week';
+
+  summaryCont.innerHTML = `
+    <div class="text-[11px] uppercase tracking-wide text-ink-500 mb-2">${fmt.escape(period)}</div>
+    <ul>${bullets.map(b => `<li>${fmt.escape(b)}</li>`).join('')}</ul>`;
 }
 
 // ---------- Promotion Queue (Board tab, Azure DevOps source) ----------
@@ -372,9 +420,9 @@ function renderPromotionQueue(s) {
   //                            distinctly so it doesn't hide behind the other
   //                            two cards.
   const diffs = [
-    { key: 'Development->Test',        label: 'Ready for Test',                     sub: 'Built in Dev, not yet in Test' },
-    { key: 'Test->Production',         label: 'Ready for Production',               sub: 'Signed off in Test, waiting to ship' },
-    { key: 'Development->Production',  label: 'Skipping Test (Dev straight to Prod)', sub: 'Hotfix path — no Test build yet' },
+    { key: 'Development->Test', label: 'Ready for Test', sub: 'Built in Dev, not yet in Test' },
+    { key: 'Test->Production', label: 'Ready for Production', sub: 'Signed off in Test, waiting to ship' },
+    { key: 'Development->Production', label: 'Skipping Test (Dev straight to Prod)', sub: 'Hotfix path — no Test build yet' },
   ];
   document.getElementById('deployment-diff').innerHTML = diffs.map(d => {
     const items = az.diff?.[d.key] || [];
@@ -389,15 +437,15 @@ function renderPromotionQueue(s) {
       <div class="dp-diff-title">${d.label}<span class="dp-diff-count">${items.length}</span></div>
       <div class="dp-diff-sub">${fmt.escape(d.sub)}</div>
       <div class="dp-diff-list">${items.map(name => {
-        const noteKey = `${d.key}::${name}`;
-        const note = notes[noteKey];
-        return `<div class="dp-diff-item ${note ? 'has-note' : ''}" data-key="${fmt.escape(noteKey)}">
+      const noteKey = `${d.key}::${name}`;
+      const note = notes[noteKey];
+      return `<div class="dp-diff-item ${note ? 'has-note' : ''}" data-key="${fmt.escape(noteKey)}">
           <i data-lucide="git-branch" class="w-3.5 h-3.5"></i>
           <span>${fmt.escape(name)}</span>
           ${note ? `<span class="dp-note-text">— ${fmt.escape(note)}</span>` : ''}
           <button class="dp-note-btn" data-note-target="${fmt.escape(noteKey)}">${note ? 'Edit note' : 'Add note'}</button>
         </div>`;
-      }).join('')}</div>
+    }).join('')}</div>
     </div>`;
   }).join('');
 
@@ -435,7 +483,7 @@ function openNoteEditor(key) {
         renderPromotionQueue(state.snapshot);
         window.lucide?.createIcons();
       }
-    } catch {}
+    } catch { }
   };
   saveBtn.addEventListener('click', doSave);
   input.addEventListener('keydown', e => {
@@ -463,12 +511,12 @@ function renderOverview(s) {
 function renderTodayProgress(tp) {
   const t = tp || {};
   const cells = [
-    { n: t.started    ?? 0, l: 'Features Started',   icon: 'sparkles',  bg: 'bg-blue-500' },
-    { n: t.toDev      ?? 0, l: 'Moved to Development', icon: 'code',   bg: 'bg-indigo-500' },
-    { n: t.toTest     ?? 0, l: 'Moved to Testing',   icon: 'flask-conical', bg: 'bg-orange-500' },
-    { n: t.released   ?? 0, l: 'Released',            icon: 'rocket',   bg: 'bg-emerald-500' },
-    { n: t.activeDevs ?? 0, l: 'Active Developers',   icon: 'users',    bg: 'bg-slate-600' },
-    { n: t.blocked    ?? 0, l: 'Blocked',             icon: 'ban',      bg: 'bg-rose-500' },
+    { n: t.started ?? 0, l: 'Features Started', icon: 'sparkles', bg: 'bg-blue-500' },
+    { n: t.toDev ?? 0, l: 'Moved to Development', icon: 'code', bg: 'bg-indigo-500' },
+    { n: t.toTest ?? 0, l: 'Moved to Testing', icon: 'flask-conical', bg: 'bg-orange-500' },
+    { n: t.released ?? 0, l: 'Released', icon: 'rocket', bg: 'bg-emerald-500' },
+    { n: t.activeDevs ?? 0, l: 'Active Developers', icon: 'users', bg: 'bg-slate-600' },
+    { n: t.blocked ?? 0, l: 'Blocked', icon: 'ban', bg: 'bg-rose-500' },
   ];
   document.getElementById('today-progress').innerHTML = cells.map(c => `
     <div class="tp-cell">
@@ -533,19 +581,19 @@ function renderReleases(id, items) {
 // not shipped stays in Development, which matches how most teams talk about
 // it in stand-up.
 const COLUMNS = [
-  { key: 'Backlog',      tone: 'backlog',  label: 'Feature Requests', empty: 'No open feature requests.' },
-  { key: 'PRCreated',    tone: 'pr',       label: 'PR Created',       empty: 'No open pull requests.' },
-  { key: 'Development',  tone: 'dev',      label: 'Development',      empty: 'Nothing being built right now.' },
-  { key: 'Testing',      tone: 'test',     label: 'Testing',          empty: 'Nothing in QA.' },
-  { key: 'Production',   tone: 'prod',     label: 'Production',       empty: 'Nothing shipped yet.' },
+  { key: 'Backlog', tone: 'backlog', label: 'Feature Requests', empty: 'No open feature requests.' },
+  { key: 'PRCreated', tone: 'pr', label: 'PR Created', empty: 'No open pull requests.' },
+  { key: 'Development', tone: 'dev', label: 'Development', empty: 'Nothing being built right now.' },
+  { key: 'Testing', tone: 'test', label: 'Testing', empty: 'Nothing in QA.' },
+  { key: 'Production', tone: 'prod', label: 'Production', empty: 'Nothing shipped yet.' },
 ];
-const COL_DOT = { backlog:'#78716c', pr:'#8b5cf6', dev:'#2563eb', test:'#ea580c', prod:'#059669' };
+const COL_DOT = { backlog: '#78716c', pr: '#8b5cf6', dev: '#2563eb', test: '#ea580c', prod: '#059669' };
 
 // A GitHub issue is a "bug" if its labels or title look like one. Everything
 // else in the issue list belongs in Backlog. This lets the board show
 // feature requests separately from defects and keeps the dedicated
 // Issues & Bugs section below focused on actual bugs.
-const BUG_LABEL_HINTS = ['bug','defect','regression','crash','error','incident','sev','severity','p0','p1','p2'];
+const BUG_LABEL_HINTS = ['bug', 'defect', 'regression', 'crash', 'error', 'incident', 'sev', 'severity', 'p0', 'p1', 'p2'];
 function isBugLike(issue) {
   const labels = (issue.labels || []).map(l => String(l).toLowerCase());
   if (labels.some(l => BUG_LABEL_HINTS.some(k => l.includes(k)))) return true;
@@ -564,8 +612,8 @@ function renderKanban(features, backlogActivities) {
   const grouped = { Development: [], Testing: [], Production: [] };
   for (const f of features) {
     if (f.stage === 'Production') { grouped.Production.push(f); continue; }
-    if (['Testing','UAT'].includes(f.stage)) { grouped.Testing.push(f); continue; }
-    if (['Development','Code Review'].includes(f.stage)) grouped.Development.push(f);
+    if (['Testing', 'UAT'].includes(f.stage)) { grouped.Testing.push(f); continue; }
+    if (['Development', 'Code Review'].includes(f.stage)) grouped.Development.push(f);
   }
 
   // Backlog = open non-bug issues from GitHub, deduped against in-flight
@@ -599,17 +647,17 @@ function renderKanban(features, backlogActivities) {
   }));
 
   const columnItems = {
-    Backlog:      backlogRows.filter(a => matchesSearch(a.name)).slice(0, 24),
-    PRCreated:    prRows.filter(a => matchesSearch(a.name)).slice(0, 24),
-    Development:  grouped.Development.sort(byUpdatedDesc).slice(0, 40),
-    Testing:      grouped.Testing.sort(byUpdatedDesc).slice(0, 40),
-    Production:   grouped.Production.sort(byUpdatedDesc).slice(0, 40),
+    Backlog: backlogRows.filter(a => matchesSearch(a.name)).slice(0, 24),
+    PRCreated: prRows.filter(a => matchesSearch(a.name)).slice(0, 24),
+    Development: grouped.Development.sort(byUpdatedDesc).slice(0, 40),
+    Testing: grouped.Testing.sort(byUpdatedDesc).slice(0, 40),
+    Production: grouped.Production.sort(byUpdatedDesc).slice(0, 40),
   };
   state._backlogShown = columnItems.Backlog;
   state._prShown = columnItems.PRCreated;
 
   const countEl = document.getElementById('board-count');
-  if (countEl) countEl.textContent = `${features.length} feature${features.length===1?'':'s'}`;
+  if (countEl) countEl.textContent = `${features.length} feature${features.length === 1 ? '' : 's'}`;
 
   document.getElementById('kanban').innerHTML = COLUMNS.map(col => {
     const items = columnItems[col.key];
@@ -754,7 +802,7 @@ function stickyPR(p, i) {
   const reviewPill = p.changesRequested > 0
     ? `<span class="pr-pill changes">Changes requested</span>`
     : (p.approvals > 0 ? `<span class="pr-pill approved">${p.approvals} approval${p.approvals === 1 ? '' : 's'}</span>`
-                       : `<span class="pr-pill review">Awaiting review</span>`);
+      : `<span class="pr-pill review">Awaiting review</span>`);
   const draftPill = p.draft ? `<span class="pr-pill draft">Draft</span>` : '';
   const mergePill = p.mergeable === 'dirty' ? `<span class="pr-pill conflict">Merge conflicts</span>` : '';
   return `<div class="note pr clickable" title="PR #${fmt.escape(String(p.number))}" data-pr="${i}">
@@ -788,7 +836,7 @@ function stickyFeature(f, tone) {
   const dev = niceName((f.developers || [])[0] || f.owner || 'Team');
   const secondaries = (f.developers || []).slice(1, 3).map(niceName);
   const av = f.commits?.[0]?.authorAvatar || null;
-  const badge = ({ dev:'In Development', test:'Awaiting QA', prod:'Live', backlog:'Planned' })[tone] || 'Updated';
+  const badge = ({ dev: 'In Development', test: 'Awaiting QA', prod: 'Live', backlog: 'Planned' })[tone] || 'Updated';
   const blocked = f.blocked || f.risk === 'High';
   return `<div class="note ${tone} ${blocked ? 'blocked' : ''}" data-key="${fmt.escape(f.key)}">
     <div class="note-title">${fmt.escape(display)}</div>
@@ -842,12 +890,12 @@ function renderNotifications(list) {
   const root = document.getElementById('notifications');
   if (items.length === 0) { root.innerHTML = `<div class="notif"><span class="n-dot info"></span><div>All clear — no attention needed.</div></div>`; return; }
   const REWRITE = {
-    'build-failed':   { tone: 'error', label: () => `Something failed to build` },
-    'stale-pr':       { tone: 'warn',  label: () => `A change is waiting for review` },
-    'conflict':       { tone: 'warn',  label: () => `A change has a conflict` },
-    'review-overdue': { tone: 'warn',  label: () => `A review is overdue` },
-    'prod-deploy':    { tone: 'info',  label: () => `A feature went live` },
-    'stuck-feature':  { tone: 'warn',  label: () => `A feature is stuck in review` },
+    'build-failed': { tone: 'error', label: () => `Something failed to build` },
+    'stale-pr': { tone: 'warn', label: () => `A change is waiting for review` },
+    'conflict': { tone: 'warn', label: () => `A change has a conflict` },
+    'review-overdue': { tone: 'warn', label: () => `A review is overdue` },
+    'prod-deploy': { tone: 'info', label: () => `A feature went live` },
+    'stuck-feature': { tone: 'warn', label: () => `A feature is stuck in review` },
   };
   root.innerHTML = items.map(n => {
     const rw = REWRITE[n.kind];
@@ -877,9 +925,9 @@ function renderRoadmapCard() {
       // unlinked items fall through to genericView with the roadmap hint so
       // the user still sees name/owner/quarter/status — never a dead click.
       const hint = {
-        name:  found.name,
+        name: found.name,
         person: found.owner,
-        when:  found.startDate || found.endDate,
+        when: found.startDate || found.endDate,
         repoFull: found.linkedRepo || '',
       };
       showFeature(found.featureKey || `roadmap:${found.id}`, hint);
@@ -899,8 +947,8 @@ function renderRoadmapCard() {
 }
 function matchStage(f) {
   if (f.stage === 'Production') return 'Production';
-  if (['Testing','UAT'].includes(f.stage)) return 'Testing';
-  if (['Development','Code Review'].includes(f.stage)) return 'Development';
+  if (['Testing', 'UAT'].includes(f.stage)) return 'Testing';
+  if (['Development', 'Code Review'].includes(f.stage)) return 'Development';
   return 'Not Started';
 }
 function normalize(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
@@ -916,9 +964,9 @@ function setupRoadmapButtons() {
     const body = {
       name,
       description: document.getElementById('add-desc').value.trim(),
-      quarter:     document.getElementById('add-quarter').value,
-      status:      document.getElementById('add-status').value,
-      owner:       document.getElementById('add-owner').value.trim(),
+      quarter: document.getElementById('add-quarter').value,
+      status: document.getElementById('add-status').value,
+      owner: document.getElementById('add-owner').value.trim(),
     };
     err.textContent = '';
     try {
@@ -970,12 +1018,12 @@ const pb = { idx: 0, playing: false, timer: null, barTimer: null, slides: [] };
 function computeSlides() {
   const s = state.snapshot; if (!s) return [];
   const tp = s.todayProgress || {}; const ws = s.weeklySummary || {};
-  const inTest = (s.features || []).filter(f => ['Testing','UAT'].includes(f.stage)).length;
-  const inDev  = (s.features || []).filter(f => f.stage === 'Development').length;
+  const inTest = (s.features || []).filter(f => ['Testing', 'UAT'].includes(f.stage)).length;
+  const inDev = (s.features || []).filter(f => f.stage === 'Development').length;
   return [
     { title: `Today at a glance`, body: `<div class="pb-number">${tp.released ?? 0}</div><p>features released to production today.</p><p class="text-sm text-ink-500 mt-2">Across ${s.repositories?.length ?? 0} products, ${tp.activeDevs ?? 0} developers were active.</p>` },
-    { title: `In motion`, body: `<p class="text-lg text-ink-900">${inDev} feature${inDev===1?'':'s'} being built, ${inTest} in QA.</p><p>Latest movement: <b>${niceName((s.activity || [])[0]?.actor || 'Team')}</b> ${humanizeEventDetail((s.activity || [])[0] || {})}.</p>` },
-    { title: `Needs attention`, body: `<p>${(s.needsAttention || []).length} item${(s.needsAttention||[]).length===1?'':'s'} require attention.</p><ul class="pb-list mt-3">${(s.needsAttention || []).slice(0, 6).map(n => `<li><b>${fmt.escape(n.name)}</b> — ${fmt.escape(n.reason)}</li>`).join('') || '<li>Nothing right now — 🎉</li>'}</ul>` },
+    { title: `In motion`, body: `<p class="text-lg text-ink-900">${inDev} feature${inDev === 1 ? '' : 's'} being built, ${inTest} in QA.</p><p>Latest movement: <b>${niceName((s.activity || [])[0]?.actor || 'Team')}</b> ${humanizeEventDetail((s.activity || [])[0] || {})}.</p>` },
+    { title: `Needs attention`, body: `<p>${(s.needsAttention || []).length} item${(s.needsAttention || []).length === 1 ? '' : 's'} require attention.</p><ul class="pb-list mt-3">${(s.needsAttention || []).slice(0, 6).map(n => `<li><b>${fmt.escape(n.name)}</b> — ${fmt.escape(n.reason)}</li>`).join('') || '<li>Nothing right now — 🎉</li>'}</ul>` },
     { title: `${ws.period || 'This week'}`, body: `<ul class="pb-list mt-1">${(ws.bullets || []).map(b => `<li>${fmt.escape(b)}</li>`).join('')}</ul>` },
     { title: `Coming next`, body: `<ul class="pb-list mt-1">${(s.upcomingReleases || []).slice(0, 6).map(r => `<li><b>${fmt.escape(r.name)}</b> — ${r.readiness}% ready (${fmt.escape(r.stage)})</li>`).join('') || '<li>Nothing scheduled yet.</li>'}</ul>` },
   ];
