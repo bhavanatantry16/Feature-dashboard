@@ -1,0 +1,20 @@
+[
+  {
+    "id": "0a45477c-702e-48bd-ba03-839bac46cf90",
+    "userId": "e8c2c41d-b5db-4040-9d84-f07886bdb26a",
+    "employeeName": "Test Employee",
+    "date": "2026-09-26",
+    "status": "available",
+    "createdAt": "2026-09-18T08:55:58.719Z",
+    "updatedAt": "2026-09-18T08:55:58.719Z"
+  },
+  {
+    "id": "eefde54f-3665-4af5-a376-dc0558c4abcd",
+    "userId": "e8c2c41d-b5db-4040-9d84-f07886bdb26a",
+    "employeeName": "Test Employee",
+    "date": "2026-09-27",
+    "status": "available",
+    "createdAt": "2026-09-24T06:23:00.232Z",
+    "updatedAt": "2026-09-24T06:23:00.232Z"
+  }
+]

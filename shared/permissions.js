@@ -48,6 +48,9 @@ export const PERMISSIONS = [
   { key: 'manage.team',           label: 'Add / Edit / Deactivate Users', category: 'Team' },
   { key: 'delete.users',          label: 'Delete Users',         category: 'Team' },
   { key: 'manage.roles',          label: 'Manage Roles',         category: 'Team' },
+
+  // Availability
+  { key: 'manage.availability',   label: 'Set Own Availability', category: 'Availability' },
 ];
 
 // Ordered by descending privilege — same order used in role dropdowns.
@@ -62,6 +65,7 @@ export const ROLE_DISPLAY_NAMES = {
   'Developer':            'Developer',
   'QA':                   'QA Engineer',
   'Viewer':               'Viewer',
+  'Employee':             'Employee',
 };
 
 /** Role templates — the checkbox set an Add-User drawer starts from. */
@@ -92,6 +96,9 @@ export const ROLE_PERMISSIONS = {
   ],
   'Viewer':               [
     'view.dashboard','view.reports','view.features','view.roadmap','view.bugs','view.team',
+  ],
+  'Employee':             [
+    'manage.availability',
   ],
 };
 

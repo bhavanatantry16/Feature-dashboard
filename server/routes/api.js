@@ -6,7 +6,7 @@ import { invalidate } from '../services/cache.js';
 import { handleWebhook, verifySignature, subscribe } from '../services/webhookService.js';
 import { getRoadmap, setRoadmap, parseCsv } from '../services/roadmapService.js';
 import { getAzdoEnvView } from '../services/azdoService.js';
-import { listUsers } from '../services/userStore.js';
+import { listUsers, getUserById, ROLE_RANK } from '../services/userStore.js';
 
 export const apiRouter = express.Router();
 
@@ -194,4 +194,30 @@ apiRouter.get('/events', (req, res) => {
   res.flushHeaders?.();
   res.write(`retry: 5000\n\n`);
   subscribe(res);
+});
+
+// --- Task Assignments (employee-to-roadmap-item) ---
+
+// GET /api/assignments — the authenticated user's own assigned tasks.
+// Used by the Employee calendar to render their tasks on the relevant dates.
+apiRouter.get('/assignments', (req, res) => {
+  const taskIds = Array.isArray(req.user.assignedTasks) ? req.user.assignedTasks : [];
+  if (!taskIds.length) return res.json({ tasks: [] });
+  const { items } = getRoadmap();
+  const tasks = (items || []).filter(item => taskIds.includes(item.id));
+  res.json({ tasks });
+});
+
+// GET /api/assignments/:userId — Admin/Super Admin: look up any user’s tasks.
+// Used by the Team drawer to pre-populate the checkbox list when editing an Employee.
+apiRouter.get('/assignments/:userId', (req, res) => {
+  if ((ROLE_RANK[req.user?.role] ?? 0) < ROLE_RANK['Admin']) {
+    return res.status(403).json({ error: 'Admin or Super Admin required' });
+  }
+  const target = getUserById(req.params.userId);
+  if (!target) return res.status(404).json({ error: 'User not found' });
+  const taskIds = Array.isArray(target.assignedTasks) ? target.assignedTasks : [];
+  const { items } = getRoadmap();
+  const tasks = (items || []).filter(item => taskIds.includes(item.id));
+  res.json({ tasks, user: { id: target.id, name: target.name, email: target.email } });
 });

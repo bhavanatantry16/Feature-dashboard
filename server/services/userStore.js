@@ -43,6 +43,7 @@ export const ROLES = [
   'QA',
   'Product Manager',
   'Viewer',
+  'Employee',
 ];
 
 // Role hierarchy for permission checks. A higher number = more privileged.
@@ -55,6 +56,7 @@ export const ROLE_RANK = {
   'Developer': 40,
   'QA': 40,
   'Viewer': 20,
+  'Employee': 10,
 };
 
 function load() {
@@ -127,6 +129,7 @@ export function upsertUser(input) {
     if (input.disabled !== undefined)      user.disabled = Boolean(input.disabled);
     if (input.repositories !== undefined)  user.repositories = Array.isArray(input.repositories) ? input.repositories : [];
     if (input.teams !== undefined)         user.teams = Array.isArray(input.teams) ? input.teams : [];
+    if (input.assignedTasks !== undefined) user.assignedTasks = Array.isArray(input.assignedTasks) ? input.assignedTasks : [];
     if (input.permissions !== undefined)   user.permissions = Array.isArray(input.permissions) ? input.permissions : null;
     if (input.notifications !== undefined) user.notifications = { ...(user.notifications || {}), ...input.notifications };
     if (input.avatarUrl !== undefined)     user.avatarUrl = input.avatarUrl || null;
@@ -152,6 +155,7 @@ export function upsertUser(input) {
       lastLoginAt:      null,
       repositories:     Array.isArray(input.repositories) ? input.repositories : [],
       teams:            Array.isArray(input.teams) ? input.teams : [],
+      assignedTasks:    Array.isArray(input.assignedTasks) ? input.assignedTasks : [],
       // permissions: null = "inherit from role template" (default). An array
       // means the admin has overridden the template for this user. This
       // shape lets us tell the two states apart in the UI ("inheriting

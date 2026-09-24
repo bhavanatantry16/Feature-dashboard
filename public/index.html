@@ -1,32 +1,42 @@
 <!doctype html>
 <html lang="en" class="h-full">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Feature Tracker · Engineering Command Center</title>
-  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
+  <link rel="icon"
+    href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>▨</text></svg>" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = { darkMode: 'class', theme: { extend: {
-      fontFamily: { sans: ['Inter','ui-sans-serif','system-ui'] },
-    } } }
+    tailwind.config = {
+      darkMode: 'class', theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+        }
+      }
+    }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>
-    (function () {
-      const s = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (s === 'dark' || (!s && prefersDark)) document.documentElement.classList.add('dark');
-    })();
+      (function () {
+        const s = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (s === 'dark' || (!s && prefersDark)) document.documentElement.classList.add('dark');
+      })();
   </script>
 </head>
+
 <body class="min-h-full font-sans antialiased text-ink-900 dark:text-slate-100">
 
   <!-- Header -->
   <header class="header">
     <div class="mx-auto max-w-[1500px] px-6 py-4 flex flex-wrap items-center gap-3">
+
       <div class="flex items-center gap-3 min-w-0">
         <div class="brand-mark">▨</div>
         <div class="leading-tight">
@@ -37,29 +47,48 @@
 
       <nav id="tabs" class="tabs ml-4" role="tablist">
         <button class="tab active" data-tab="overview"><i data-lucide="gauge" class="w-4 h-4"></i>Overview</button>
-        <button class="tab"        data-tab="board"><i data-lucide="layout-grid" class="w-4 h-4"></i>Board</button>
-        <button class="tab"        data-tab="roadmap"><i data-lucide="map" class="w-4 h-4"></i>Roadmap</button>
-        <button class="tab"        data-tab="bugs"><i data-lucide="bug" class="w-4 h-4"></i>Bugs</button>
-        <button class="tab hidden" data-tab="team" id="tab-team-btn"><i data-lucide="users" class="w-4 h-4"></i>Team</button>
+        <button class="tab" data-tab="board"><i data-lucide="layout-grid" class="w-4 h-4"></i>Board</button>
+        <button class="tab" data-tab="roadmap"><i data-lucide="map" class="w-4 h-4"></i>Roadmap</button>
+        <button class="tab" data-tab="bugs"><i data-lucide="bug" class="w-4 h-4"></i>Bugs</button>
+        <button class="tab" data-tab="calendar"><i data-lucide="calendar-days" class="w-4 h-4"></i>Calendar</button>
+        <button class="tab" data-tab="executive-report">
+          <i data-lucide="file-text" class="w-4 h-4"></i>Executive Report
+        </button>
+        <button class="tab hidden" data-tab="team" id="tab-team-btn"><i data-lucide="users"
+            class="w-4 h-4"></i>Team</button>
       </nav>
 
-      <div class="ml-auto flex items-center gap-2">
-        <button id="btn-download-pdf" class="btn-secondary text-xs" title="Download the current Overview as PDF (uses your browser's Save as PDF)">
-          <i data-lucide="file-down" class="w-3.5 h-3.5"></i>Download PDF
-        </button>
-        <button id="btn-playback" class="btn-primary text-xs" title="30-second executive recap">
-          <i data-lucide="play" class="w-3.5 h-3.5"></i>Executive Playback
-        </button>
-        <span id="last-synced-wrap" class="text-[11px] text-ink-500 hidden md:inline">Updated <span id="last-synced">—</span></span>
-        <button id="btn-refresh" class="icon-btn" title="Refresh"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-        <button id="btn-theme"   class="icon-btn" title="Theme"><i data-lucide="moon" class="w-4 h-4"></i></button>
-        <a href="/config.html" class="icon-btn" title="Settings"><i data-lucide="settings" class="w-4 h-4"></i></a>
-        <a href="#team" id="header-admin-link" class="icon-btn hidden" title="Team Management"><i data-lucide="users" class="w-4 h-4"></i></a>
-        <span id="header-me" class="header-me hidden">
-          <span id="header-me-name">—</span>
-          <span id="header-me-role" class="header-me-role">—</span>
-        </span>
-        <button id="btn-signout" class="icon-btn hidden" title="Sign out"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+      <div class="nav-controls ml-auto flex items-center gap-2">
+        <!-- Group 1: primary actions -->
+        <div class="nav-grp nav-grp-actions">
+          <button id="btn-download-pdf" class="btn-secondary text-xs"
+            title="Download the current Overview as PDF (uses your browser's Save as PDF)">
+            <i data-lucide="file-down" class="w-3.5 h-3.5"></i>Download PDF
+          </button>
+          <button id="btn-playback" class="btn-primary text-xs" title="30-second executive recap">
+            <i data-lucide="play" class="w-3.5 h-3.5"></i>Executive Playback
+          </button>
+        </div>
+        <!-- Group 2: tool icon buttons -->
+        <div class="nav-grp nav-grp-tools">
+          <span id="last-synced-wrap" class="text-[11px] text-ink-500 hidden md:inline">Updated <span
+              id="last-synced">—</span></span>
+          <button id="btn-refresh" class="icon-btn" title="Refresh"><i data-lucide="refresh-cw"
+              class="w-4 h-4"></i></button>
+          <button id="btn-theme" class="icon-btn" title="Theme"><i data-lucide="moon" class="w-4 h-4"></i></button>
+          <a href="/config.html" class="icon-btn" title="Settings"><i data-lucide="settings" class="w-4 h-4"></i></a>
+          <a href="#team" id="header-admin-link" class="icon-btn hidden" title="Team Management"><i data-lucide="users"
+              class="w-4 h-4"></i></a>
+        </div>
+        <!-- Group 3: user identity + logout -->
+        <div class="nav-grp nav-grp-user">
+          <span id="header-me" class="header-me hidden">
+            <span id="header-me-name">—</span>
+            <span id="header-me-role" class="header-me-role">—</span>
+          </span>
+          <button id="btn-signout" class="icon-btn hidden" title="Sign out"><i data-lucide="log-out"
+              class="w-4 h-4"></i></button>
+        </div>
       </div>
     </div>
   </header>
@@ -107,11 +136,15 @@
       <!-- Recently released / Upcoming -->
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div>
-          <div class="section-head"><h3>Recently Released</h3><span class="section-sub">Shipped to Production</span></div>
+          <div class="section-head">
+            <h3>Recently Released</h3><span class="section-sub">Shipped to Production</span>
+          </div>
           <div id="recent-releases" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
         </div>
         <div>
-          <div class="section-head"><h3>Upcoming Releases</h3><span class="section-sub">Nearing production</span></div>
+          <div class="section-head">
+            <h3>Upcoming Releases</h3><span class="section-sub">Nearing production</span>
+          </div>
           <div id="upcoming-releases" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
         </div>
       </div>
@@ -119,11 +152,15 @@
       <!-- Activity + Notifications -->
       <div class="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
         <div>
-          <div class="section-head"><h3>What happened today</h3><span class="section-sub">Latest changes</span></div>
+          <div class="section-head">
+            <h3>What happened today</h3><span class="section-sub">Latest changes</span>
+          </div>
           <div id="activity" class="activity-card"></div>
         </div>
         <div>
-          <div class="section-head"><h3>Notifications</h3><span id="notif-count" class="section-sub">—</span></div>
+          <div class="section-head">
+            <h3>Notifications</h3><span id="notif-count" class="section-sub">—</span>
+          </div>
           <div id="notifications" class="space-y-2"></div>
         </div>
       </div>
@@ -145,9 +182,15 @@
           <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"></i>
           <input id="f-search" placeholder="Search features…" class="filter w-full pl-9" />
         </div>
-        <select id="f-repo"   class="filter"><option value="">All products</option></select>
-        <select id="f-dev"    class="filter"><option value="">All people</option></select>
-        <select id="f-sprint" class="filter"><option value="">All sprints</option></select>
+        <select id="f-repo" class="filter">
+          <option value="">All products</option>
+        </select>
+        <select id="f-dev" class="filter">
+          <option value="">All people</option>
+        </select>
+        <select id="f-sprint" class="filter">
+          <option value="">All sprints</option>
+        </select>
       </div>
 
       <!-- Quick chips -->
@@ -160,7 +203,8 @@
         <button class="chip" id="chip-clear" title="Clear chips"><i data-lucide="x" class="w-3 h-3"></i></button>
         <label class="ml-auto text-[11px] text-ink-500 flex items-center gap-1">
           <input type="checkbox" id="chip-me-input" class="hidden" />
-          I am <input id="me-name" class="filter" style="min-width:120px;height:26px;padding:0 8px;font-size:12px" placeholder="your login" />
+          I am <input id="me-name" class="filter" style="min-width:120px;height:26px;padding:0 8px;font-size:12px"
+            placeholder="your login" />
         </label>
       </div>
 
@@ -174,11 +218,14 @@
       <div class="section-head" style="margin-top:24px">
         <div>
           <h3>Bugs</h3>
-          <span id="bugs-source" class="section-sub">Open defects — same list as the Bugs tab, kept together so you never lose it</span>
+          <span id="bugs-source" class="section-sub">Open defects — same list as the Bugs tab, kept together so you
+            never lose it</span>
         </div>
         <div class="ml-auto flex gap-2">
-          <button id="btn-board-bug-import" class="btn-secondary text-xs"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Import bugs</button>
-          <button id="btn-board-bug-add"    class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add bug</button>
+          <button id="btn-board-bug-import" class="btn-secondary text-xs"><i data-lucide="upload"
+              class="w-3.5 h-3.5"></i>Import bugs</button>
+          <button id="btn-board-bug-add" class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add
+            bug</button>
         </div>
       </div>
       <div id="bugs-list" class="bugs-list"></div>
@@ -201,11 +248,14 @@
       <div class="page-head">
         <div>
           <h2 class="page-title">Bugs &amp; Issues</h2>
-          <p class="page-sub">Defect triage — separate from feature delivery. Manual entries persist here; imports pull from CSV / JSON / GitHub / Jira / Azure / Linear exports.</p>
+          <p class="page-sub">Defect triage — separate from feature delivery. Manual entries persist here; imports pull
+            from CSV / JSON / GitHub / Jira / Azure / Linear exports.</p>
         </div>
         <div class="page-actions">
-          <button id="btn-bug-import" class="btn-secondary text-xs"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Import bugs</button>
-          <button id="btn-bug-add"    class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add bug</button>
+          <button id="btn-bug-import" class="btn-secondary text-xs"><i data-lucide="upload"
+              class="w-3.5 h-3.5"></i>Import bugs</button>
+          <button id="btn-bug-add" class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add
+            bug</button>
         </div>
       </div>
 
@@ -214,9 +264,15 @@
           <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"></i>
           <input id="bug-search" placeholder="Search bugs…" class="filter w-full pl-9" />
         </div>
-        <select id="bug-filter-severity" class="filter"><option value="">All severities</option></select>
-        <select id="bug-filter-status"   class="filter"><option value="">All statuses</option></select>
-        <select id="bug-filter-env"      class="filter"><option value="">All environments</option></select>
+        <select id="bug-filter-severity" class="filter">
+          <option value="">All severities</option>
+        </select>
+        <select id="bug-filter-status" class="filter">
+          <option value="">All statuses</option>
+        </select>
+        <select id="bug-filter-env" class="filter">
+          <option value="">All environments</option>
+        </select>
       </div>
 
       <div id="bugs-table-wrap" class="admin-table-wrap"></div>
@@ -227,10 +283,12 @@
       <div class="page-head">
         <div>
           <h2 class="page-title">Team Management</h2>
-          <p class="page-sub">Manage users, roles and permissions. Authentication settings live in <a href="/config.html" class="page-link">Settings</a>.</p>
+          <p class="page-sub">Manage users, roles and permissions. Authentication settings live in <a
+              href="/config.html" class="page-link">Settings</a>.</p>
         </div>
         <div class="page-actions">
-          <button id="btn-team-add" class="btn-primary text-xs"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i>Add User</button>
+          <button id="btn-team-add" class="btn-primary text-xs"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i>Add
+            User</button>
         </div>
       </div>
 
@@ -239,9 +297,13 @@
           <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"></i>
           <input id="team-search" placeholder="Search users…" class="filter w-full pl-9" />
         </div>
-        <select id="team-filter-role"       class="filter"><option value="">All roles</option></select>
-        <select id="team-filter-department" class="filter"><option value="">All departments</option></select>
-        <select id="team-filter-status"     class="filter">
+        <select id="team-filter-role" class="filter">
+          <option value="">All roles</option>
+        </select>
+        <select id="team-filter-department" class="filter">
+          <option value="">All departments</option>
+        </select>
+        <select id="team-filter-status" class="filter">
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="disabled">Disabled</option>
@@ -259,9 +321,12 @@
           <p class="text-sm text-ink-500">Quarterly plan. Statuses update automatically as work moves in GitHub.</p>
         </div>
         <div class="flex gap-2">
-          <button id="btn-roadmap-add"    class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add feature</button>
-          <button id="btn-roadmap-import" class="btn-secondary text-xs"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Import CSV / JSON</button>
-          <button id="btn-roadmap-seed"   class="btn-secondary text-xs"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i>Load sample plan</button>
+          <button id="btn-roadmap-add" class="btn-primary text-xs"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add
+            feature</button>
+          <button id="btn-roadmap-import" class="btn-secondary text-xs"><i data-lucide="upload"
+              class="w-3.5 h-3.5"></i>Import CSV / JSON</button>
+          <button id="btn-roadmap-seed" class="btn-secondary text-xs"><i data-lucide="sparkles"
+              class="w-3.5 h-3.5"></i>Load sample plan</button>
         </div>
       </div>
       <div class="roadmap-card">
@@ -273,6 +338,31 @@
         </div>
       </div>
     </section>
+
+    <!-- =========================== EXECUTIVE REPORT =========================== -->
+    <section id="tab-executive-report" class="tab-panel hidden space-y-6">
+      <div>
+        <h2 class="text-xl font-semibold tracking-tight">Executive Report</h2>
+        <p class="text-sm text-ink-500">Engineering delivery and performance at a glance.</p>
+      </div>
+
+      <!-- Section 1: Executive Overview -->
+      <div id="er-overview">
+        <!-- KPI grid -->
+        <div class="section-head">
+          <h3>Executive Overview</h3>
+          <span class="section-sub">Key engineering metrics</span>
+        </div>
+        <div id="er-kpi-grid" class="progress-grid"></div>
+
+        <!-- Delivery Summary -->
+        <div class="section-head" style="margin-top:24px">
+          <h3>Delivery Summary</h3>
+          <span class="section-sub">Auto-generated from live data</span>
+        </div>
+        <div id="er-delivery-summary" class="summary-card"></div>
+      </div>
+    </section>
   </main>
 
   <footer class="mx-auto max-w-[1500px] px-6 py-8 text-xs text-ink-500">
@@ -282,7 +372,8 @@
   <!-- ==== Import dialog ==== -->
   <div id="import-dialog" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/40" data-import-close></div>
-    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
+    <div
+      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
       <div class="flex items-center justify-between mb-3">
         <div>
           <div class="font-semibold">Import Roadmap</div>
@@ -290,7 +381,8 @@
         </div>
         <button class="icon-btn" data-import-close><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
-      <textarea id="import-text" class="w-full h-40 border border-surface-border rounded-lg p-3 text-xs mono focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+      <textarea id="import-text"
+        class="w-full h-40 border border-surface-border rounded-lg p-3 text-xs mono focus:outline-none focus:ring-2 focus:ring-blue-400/40"
         placeholder="name,quarter,status,owner,description
 User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
       <div class="mt-3 flex items-center gap-2">
@@ -309,7 +401,8 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
   <!-- ==== Add feature dialog ==== -->
   <div id="add-dialog" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/40" data-add-close></div>
-    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
+    <div
+      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
       <div class="flex items-center justify-between mb-3">
         <div>
           <div class="font-semibold" id="add-dialog-title">Add roadmap feature</div>
@@ -319,15 +412,22 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
       </div>
       <div class="grid grid-cols-1 gap-3">
         <label class="text-xs text-ink-500">Feature name
-          <input id="add-name" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="e.g. Passwordless sign-in" />
+          <input id="add-name"
+            class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+            placeholder="e.g. Passwordless sign-in" />
         </label>
         <label class="text-xs text-ink-500">Short description <span class="text-ink-400">(optional)</span>
-          <input id="add-desc" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="One line — what's the outcome?" />
+          <input id="add-desc"
+            class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+            placeholder="One line — what's the outcome?" />
         </label>
         <div class="grid grid-cols-3 gap-2">
           <label class="text-xs text-ink-500 col-span-1">Quarter
             <select id="add-quarter" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm">
-              <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
+              <option>Q1</option>
+              <option>Q2</option>
+              <option>Q3</option>
+              <option>Q4</option>
             </select>
           </label>
           <label class="text-xs text-ink-500 col-span-2">Status
@@ -342,7 +442,9 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
           </label>
         </div>
         <label class="text-xs text-ink-500">Owner <span class="text-ink-400">(GitHub login or name)</span>
-          <input id="add-owner" class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="e.g. anika-r" />
+          <input id="add-owner"
+            class="mt-1 w-full border border-surface-border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+            placeholder="e.g. anika-r" />
         </label>
       </div>
       <div class="mt-4 flex items-center gap-2">
@@ -358,21 +460,27 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
   <!-- ==== Executive Playback ==== -->
   <div id="playback" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" data-playback-close></div>
-    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] max-w-[94vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
+    <div
+      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] max-w-[94vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
       <div class="pb-head">
         <div class="flex items-center gap-2">
           <i data-lucide="play-circle" class="w-4 h-4 text-emerald-500"></i>
           <div class="font-semibold text-sm">Executive Playback · 30 seconds</div>
         </div>
         <div class="pb-controls">
-          <button id="pb-prev" class="icon-btn" title="Previous"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-          <button id="pb-play" class="icon-btn" title="Pause / play"><i data-lucide="pause" class="w-4 h-4"></i></button>
-          <button id="pb-next" class="icon-btn" title="Next"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+          <button id="pb-prev" class="icon-btn" title="Previous"><i data-lucide="chevron-left"
+              class="w-4 h-4"></i></button>
+          <button id="pb-play" class="icon-btn" title="Pause / play"><i data-lucide="pause"
+              class="w-4 h-4"></i></button>
+          <button id="pb-next" class="icon-btn" title="Next"><i data-lucide="chevron-right"
+              class="w-4 h-4"></i></button>
           <button class="icon-btn" data-playback-close title="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
       </div>
       <div id="pb-slide" class="pb-slide"></div>
-      <div class="pb-progress"><div id="pb-bar"></div></div>
+      <div class="pb-progress">
+        <div id="pb-bar"></div>
+      </div>
       <div class="pb-dots" id="pb-dots"></div>
     </div>
   </div>
@@ -383,7 +491,8 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
        Repository Access / Notifications. Access section (temp password
        + disabled) sits at the bottom.
        ========================================================== -->
-  <aside id="user-drawer" class="side-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="user-drawer-title">
+  <aside id="user-drawer" class="side-drawer hidden" role="dialog" aria-modal="true"
+    aria-labelledby="user-drawer-title">
     <div class="side-drawer-scrim" data-user-drawer-close></div>
     <div class="side-drawer-panel">
       <header class="side-drawer-head">
@@ -391,7 +500,8 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
           <div id="user-drawer-title" class="side-drawer-title">Add User</div>
           <div class="side-drawer-sub">Enterprise team member</div>
         </div>
-        <button class="icon-btn" data-user-drawer-close aria-label="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
+        <button class="icon-btn" data-user-drawer-close aria-label="Close"><i data-lucide="x"
+            class="w-4 h-4"></i></button>
       </header>
 
       <div class="side-drawer-body">
@@ -436,7 +546,8 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
           </div>
           <div id="ud-permissions" class="perm-grid"></div>
           <div class="drawer-section-foot">
-            <button id="ud-perm-reset" class="btn-secondary text-xs" type="button" hidden>Reset to role defaults</button>
+            <button id="ud-perm-reset" class="btn-secondary text-xs" type="button" hidden>Reset to role
+              defaults</button>
           </div>
         </section>
 
@@ -460,6 +571,48 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
           <label class="notif-row"><input type="checkbox" id="ud-notif-release" checked /> Release notifications</label>
         </section>
 
+        <!-- ── Availability (Employee role only) ───────────────────────── -->
+        <section class="drawer-section" id="ud-availability-section" style="display:none">
+          <div class="drawer-section-head">
+            <h3>Availability</h3>
+            <span>Set the employee's current availability status</span>
+          </div>
+          <label class="admin-label">Status
+            <select id="ud-avail-status" class="admin-input">
+              <option value="">— No status set —</option>
+              <option value="available">Available</option>
+              <option value="leave">On Leave</option>
+            </select>
+          </label>
+          <div id="ud-leave-dates" style="display:none;margin-top:8px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <label class="admin-label">Leave Start
+                <input id="ud-leave-start" type="date" class="admin-input" />
+              </label>
+              <label class="admin-label">Leave End
+                <input id="ud-leave-end" type="date" class="admin-input" />
+              </label>
+            </div>
+            <div style="font-size:11px;color:var(--ink-400);margin-top:4px;">One record per day in the range.</div>
+          </div>
+          <div id="ud-avail-current" style="margin-top:8px;font-size:12px;color:var(--ink-500);"></div>
+        </section>
+
+        <!-- ── Assigned Tasks / Features (Employee role only) ─────────── -->
+        <section class="drawer-section" id="ud-tasks-section" style="display:none">
+          <div class="drawer-section-head">
+            <h3>Assigned Tasks / Features</h3>
+            <span>Select Roadmap items to assign to this employee</span>
+          </div>
+          <input id="ud-tasks-search" type="search" class="admin-input" placeholder="Search tasks…"
+            style="margin-bottom:8px;font-size:12px;" />
+          <div id="ud-tasks-list"
+            style="max-height:200px;overflow-y:auto;border:1px solid var(--surface-border);border-radius:8px;padding:6px 8px;font-size:12px;background:var(--surface-muted,#f8fafc);">
+            <span style="color:var(--ink-400);">Loading tasks…</span>
+          </div>
+          <div id="ud-tasks-count" style="font-size:11px;color:var(--ink-400);margin-top:4px;"></div>
+        </section>
+
         <section class="drawer-section">
           <div class="drawer-section-head">
             <h3>Access</h3>
@@ -469,7 +622,8 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
             <input type="checkbox" id="ud-send-invite" checked /> Send invitation email
             <span class="text-xs text-ink-400" style="margin-left:auto" id="ud-send-invite-hint">On</span>
           </label>
-          <label class="admin-label">Temporary Password <span class="text-ink-400" id="ud-password-hint">(leave blank when sending invite — user picks their own)</span>
+          <label class="admin-label">Temporary Password <span class="text-ink-400" id="ud-password-hint">(leave blank
+              when sending invite — user picks their own)</span>
             <input id="ud-password" type="text" class="admin-input" placeholder="min 8 chars" />
           </label>
           <label class="notif-row"><input type="checkbox" id="ud-disabled" /> Disabled (can't sign in)</label>
@@ -499,7 +653,8 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
           <div id="bug-drawer-title" class="side-drawer-title">Add Bug</div>
           <div id="bug-drawer-sub" class="side-drawer-sub">New defect entry</div>
         </div>
-        <button class="icon-btn" data-bug-drawer-close aria-label="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
+        <button class="icon-btn" data-bug-drawer-close aria-label="Close"><i data-lucide="x"
+            class="w-4 h-4"></i></button>
       </header>
 
       <div class="side-drawer-body" id="bug-drawer-body">
@@ -515,22 +670,30 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
         </section>
 
         <section class="drawer-section">
-          <div class="drawer-section-head"><h3>Classification</h3></div>
+          <div class="drawer-section-head">
+            <h3>Classification</h3>
+          </div>
           <div class="grid grid-cols-2 gap-3">
             <label class="admin-label">Severity <select id="bd-severity" class="admin-input"></select></label>
             <label class="admin-label">Priority <select id="bd-priority" class="admin-input"></select></label>
-            <label class="admin-label">Status   <select id="bd-status"   class="admin-input"></select></label>
+            <label class="admin-label">Status <select id="bd-status" class="admin-input"></select></label>
             <label class="admin-label">Environment <select id="bd-environment" class="admin-input"></select></label>
           </div>
         </section>
 
         <section class="drawer-section">
-          <div class="drawer-section-head"><h3>People &amp; Links</h3></div>
+          <div class="drawer-section-head">
+            <h3>People &amp; Links</h3>
+          </div>
           <div class="grid grid-cols-2 gap-3">
-            <label class="admin-label">Reporter <input id="bd-reporter" class="admin-input" placeholder="you@company.com" /></label>
-            <label class="admin-label">Assignee <input id="bd-assignee" class="admin-input" placeholder="dev@company.com" /></label>
-            <label class="admin-label">Repository <input id="bd-repo" class="admin-input" placeholder="org/repo" /></label>
-            <label class="admin-label">Linked Feature <input id="bd-linkedFeature" class="admin-input" placeholder="User Authentication" /></label>
+            <label class="admin-label">Reporter <input id="bd-reporter" class="admin-input"
+                placeholder="you@company.com" /></label>
+            <label class="admin-label">Assignee <input id="bd-assignee" class="admin-input"
+                placeholder="dev@company.com" /></label>
+            <label class="admin-label">Repository <input id="bd-repo" class="admin-input"
+                placeholder="org/repo" /></label>
+            <label class="admin-label">Linked Feature <input id="bd-linkedFeature" class="admin-input"
+                placeholder="User Authentication" /></label>
           </div>
           <label class="admin-label">GitHub Issue URL <span class="text-ink-400">(optional)</span>
             <input id="bd-githubIssueUrl" class="admin-input" placeholder="https://github.com/…/issues/123" />
@@ -538,21 +701,30 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
         </section>
 
         <section class="drawer-section">
-          <div class="drawer-section-head"><h3>Reproduction</h3></div>
-          <label class="admin-label">Steps to Reproduce <textarea id="bd-stepsToReproduce" class="admin-input" rows="4"></textarea></label>
+          <div class="drawer-section-head">
+            <h3>Reproduction</h3>
+          </div>
+          <label class="admin-label">Steps to Reproduce <textarea id="bd-stepsToReproduce" class="admin-input"
+              rows="4"></textarea></label>
           <div class="grid grid-cols-2 gap-3">
-            <label class="admin-label">Expected Result <textarea id="bd-expectedResult" class="admin-input" rows="3"></textarea></label>
-            <label class="admin-label">Actual Result   <textarea id="bd-actualResult"   class="admin-input" rows="3"></textarea></label>
+            <label class="admin-label">Expected Result <textarea id="bd-expectedResult" class="admin-input"
+                rows="3"></textarea></label>
+            <label class="admin-label">Actual Result <textarea id="bd-actualResult" class="admin-input"
+                rows="3"></textarea></label>
           </div>
         </section>
 
         <!-- Read-only detail sections — only shown when opened for an existing bug -->
         <section id="bd-history-section" class="drawer-section hidden">
-          <div class="drawer-section-head"><h3>Status History</h3></div>
+          <div class="drawer-section-head">
+            <h3>Status History</h3>
+          </div>
           <div id="bd-history" class="bug-history"></div>
         </section>
         <section id="bd-comments-section" class="drawer-section hidden">
-          <div class="drawer-section-head"><h3>Comments</h3></div>
+          <div class="drawer-section-head">
+            <h3>Comments</h3>
+          </div>
           <div id="bd-comments" class="bug-comments"></div>
           <div class="flex gap-2 mt-2">
             <input id="bd-comment-input" class="admin-input" placeholder="Leave a comment…" />
@@ -575,7 +747,8 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
   <!-- ==== Bug import dialog ==== -->
   <div id="bug-import-dialog" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/40" data-bug-import-close></div>
-    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[620px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
+    <div
+      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[620px] max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-5">
       <div class="flex items-center justify-between mb-3">
         <div>
           <div class="font-semibold">Import Bugs</div>
@@ -583,7 +756,8 @@ User Authentication,Q1,Production,Anika,Login and OAuth"></textarea>
         </div>
         <button class="icon-btn" data-bug-import-close><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
-      <textarea id="bug-import-text" class="w-full h-40 border border-surface-border rounded-lg p-3 text-xs mono focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+      <textarea id="bug-import-text"
+        class="w-full h-40 border border-surface-border rounded-lg p-3 text-xs mono focus:outline-none focus:ring-2 focus:ring-blue-400/40"
         placeholder="title,severity,priority,status,repo,assignee,environment
 Authentication timeout,Critical,P1,Open,org/api,rahul-m,Production"></textarea>
       <div class="mt-3 flex items-center gap-2">
@@ -600,25 +774,32 @@ Authentication timeout,Critical,P1,Open,org/api,rahul-m,Production"></textarea>
     </div>
   </div>
 
+  <!-- =========================== CALENDAR =========================== -->
+  <section id="tab-calendar" class="tab-panel hidden"></section>
+
   <!-- ==== Feature Intelligence Drawer ==== -->
   <div id="drawer" class="drawer-root hidden" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
     <div class="drawer-backdrop" data-drawer-close></div>
     <aside id="drawer-panel" class="drawer-panel" role="document" aria-label="Feature details">
       <header class="drawer-head">
-        <button id="drawer-back" class="drawer-back hidden" aria-label="Back"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+        <button id="drawer-back" class="drawer-back hidden" aria-label="Back"><i data-lucide="arrow-left"
+            class="w-4 h-4"></i></button>
         <span id="drawer-swatch" class="drawer-swatch"></span>
         <div class="drawer-head-titles">
           <div id="drawer-kicker" class="drawer-kicker"></div>
           <div id="drawer-title" class="drawer-title">Feature</div>
         </div>
         <div class="drawer-head-actions">
-          <button id="drawer-search-toggle" class="drawer-hbtn" aria-label="Search inside" title="Search inside"><i data-lucide="search" class="w-4 h-4"></i></button>
-          <button class="drawer-hbtn" data-drawer-close aria-label="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <button id="drawer-search-toggle" class="drawer-hbtn" aria-label="Search inside" title="Search inside"><i
+              data-lucide="search" class="w-4 h-4"></i></button>
+          <button class="drawer-hbtn" data-drawer-close aria-label="Close"><i data-lucide="x"
+              class="w-4 h-4"></i></button>
         </div>
       </header>
       <div id="drawer-searchbar" class="drawer-searchbar hidden">
         <i data-lucide="search" class="w-4 h-4 text-ink-400"></i>
-        <input id="drawer-search" type="text" placeholder="Search commits, PRs, files, people…" aria-label="Search inside drawer" />
+        <input id="drawer-search" type="text" placeholder="Search commits, PRs, files, people…"
+          aria-label="Search inside drawer" />
       </div>
       <div id="drawer-body" class="drawer-body"></div>
       <footer id="drawer-foot" class="drawer-foot hidden"></footer>
@@ -627,4 +808,5 @@ Authentication timeout,Critical,P1,Open,org/api,rahul-m,Production"></textarea>
 
   <script type="module" src="/js/app.js"></script>
 </body>
+
 </html>
